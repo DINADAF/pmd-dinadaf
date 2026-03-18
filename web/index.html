@@ -135,6 +135,7 @@ tr:hover td{background:var(--surface2)}
   <nav class="sidebar-nav">
     <div class="nav-section">
       <div class="nav-section-title">Principal</div>
+      <div class="nav-item" onclick="showPage('home',this)"><span class="nav-icon">&#8962;</span>Inicio</div>
       <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">&#9632;</span>Dashboard</div>
       <div class="nav-item" onclick="showPage('deportistas',this)"><span class="nav-icon">&#9679;</span>Deportistas</div>
       <div class="nav-item" id="nav-cambios" onclick="showPage('cambios',this)"><span class="nav-icon">&#9654;</span>Cambios PAD</div>
@@ -157,18 +158,13 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
-<!-- LOGIN GATE — shown when no MSAL session -->
-<div id="login-gate" style="display:none;position:fixed;inset:0;background:#0F2B1F;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px">
+<!-- LOADING SCREEN — shown while MSAL initializes -->
+<div id="loading-screen" style="position:fixed;inset:0;background:#0F2B1F;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px">
   <div style="text-align:center;color:#fff">
-    <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px">UF-PMD / DINADAF / IPD</div>
-    <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px">Plataforma PMD</h1>
-    <p style="color:rgba(255,255,255,0.5);font-size:13px">Acceso restringido al personal de la UF-PMD</p>
+    <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px">UF-PMD / DINADAF / IPD</div>
+    <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.5px">Plataforma PMD</h1>
   </div>
-  <button id="btn-login-gate" onclick="msalSignIn()" style="background:#1D6B4F;color:#fff;border:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:0.2px">
-    Iniciar sesion con cuenta IPD
-  </button>
-  <div id="login-error" style="color:#f87171;font-size:12px;display:none"></div>
-  <div style="color:rgba(255,255,255,0.25);font-size:11px">v1.0 &middot; Directiva 003-2025-IPD/DINADAF</div>
+  <div style="color:rgba(255,255,255,0.4);font-size:12px">Verificando sesion...</div>
 </div>
 
 <div class="main" id="main-app" style="display:none">
@@ -184,8 +180,31 @@ tr:hover td{background:var(--surface2)}
 
   <div class="content">
 
+    <!-- HOME -->
+    <div class="page" id="page-home">
+      <div style="max-width:680px;margin:48px auto 0">
+        <div id="home-user" style="font-size:13px;color:var(--text3);margin-bottom:32px"></div>
+        <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">Bienvenido a la Plataforma PMD</h2>
+        <p style="color:var(--text2);font-size:14px;margin-bottom:32px">Selecciona el modulo al que deseas acceder.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div class="card" id="home-card-dashboard" onclick="showPage('dashboard',null)" style="cursor:pointer;padding:28px;transition:var(--transition)" onmouseover="this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.boxShadow='var(--shadow)'">
+            <div style="font-size:28px;margin-bottom:16px">&#9632;</div>
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:8px">Dashboard y Reportes</h3>
+            <p style="font-size:13px;color:var(--text2);line-height:1.5">Visualizacion de KPIs, consolidados tecnicos, economicos y reportes del programa PAD.</p>
+            <div style="margin-top:20px;font-size:12px;color:var(--accent);font-weight:600">Siempre disponible →</div>
+          </div>
+          <div class="card" id="home-card-gestion" onclick="showPage('cambios',null)" style="cursor:pointer;padding:28px;transition:var(--transition)" onmouseover="this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.boxShadow='var(--shadow)'">
+            <div style="font-size:28px;margin-bottom:16px">&#9654;</div>
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:8px">Gestion PAD</h3>
+            <p style="font-size:13px;color:var(--text2);line-height:1.5">Registro de ingresos, retiros y cambios de nivel. Requiere API local activa en PC de trabajo.</p>
+            <div id="home-api-badge" style="margin-top:20px;font-size:12px;font-weight:600;color:var(--text3)">Verificando API...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- DASHBOARD -->
-    <div class="page active" id="page-dashboard">
+    <div class="page" id="page-dashboard">
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label"><span class="stat-dot" style="background:var(--accent)"></span>Deportistas activos</div>
@@ -541,7 +560,7 @@ const MSAL_CONFIG = {
   auth: {
     clientId: '4ebfc360-a6b5-4330-8a73-682768a95b64',
     authority: 'https://login.microsoftonline.com/19ccc9d6-ff9b-4dc4-914e-f195773cb1a2',
-    redirectUri: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/'),
+    redirectUri: 'https://dinadaf.github.io/pmd-dinadaf/',
   },
   cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
 };
@@ -582,33 +601,20 @@ function updateAuthUI() {
 
 async function msalSignIn() {
   if (!msalApp) return;
-  const accounts = msalApp.getAllAccounts();
-  if (accounts.length > 0) { showApp(); return; }
-  const errEl = document.getElementById('login-error');
-  if (errEl) errEl.style.display = 'none';
-  try {
-    await msalApp.loginPopup({ scopes: GRAPH_SCOPES });
-    showApp();
-    await checkApi();
-    await loadDashboard();
-    if (online) await loadCats();
-    updateAuthUI();
-  } catch(e) {
-    if (errEl) { errEl.textContent = 'No se pudo iniciar sesion. Intenta nuevamente.'; errEl.style.display = 'block'; }
-    console.warn('Sign in failed:', e.message);
-  }
+  try { await msalApp.loginRedirect({ scopes: GRAPH_SCOPES }); }
+  catch(e) { console.warn('Redirect failed:', e.message); }
 }
 
-function showApp() {
-  document.getElementById('login-gate').style.display = 'none';
+function showApp(account) {
+  document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
   document.querySelector('.sidebar').style.display = 'flex';
-}
-
-function showLoginGate() {
-  document.getElementById('login-gate').style.display = 'flex';
-  document.getElementById('main-app').style.display = 'none';
-  document.querySelector('.sidebar').style.display = 'none';
+  if (account) {
+    const el = document.getElementById('home-user');
+    if (el) el.textContent = account.username;
+    const btn = document.getElementById('btn-signin');
+    if (btn) { btn.textContent = '● ' + account.username; btn.title = 'Sesion activa'; }
+  }
 }
 
 // ── API CHECK ──────────────────────────────────────────────
@@ -943,7 +949,7 @@ function showPage(id, el) {
   document.getElementById('page-'+id)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el?.classList.add('active');
-  const titles = {dashboard:'Dashboard',deportistas:'Deportistas',cambios:'Cambios PAD',consolidados:'Consolidados',giros:'Giros',catalogos:'Catalogos',montos:'Montos de referencia'};
+  const titles = {home:'Inicio',dashboard:'Dashboard',deportistas:'Deportistas',cambios:'Cambios PAD',consolidados:'Consolidados',giros:'Giros',catalogos:'Catalogos',montos:'Montos de referencia'};
   document.getElementById('page-title').textContent = titles[id]||id;
   const btnNuevo = document.getElementById('btn-nuevo');
   if (btnNuevo) btnNuevo.style.display = (online && (id==='dashboard'||id==='cambios')) ? 'inline-flex' : 'none';
@@ -975,22 +981,35 @@ if (inp) inp.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'
 
 // ── INIT ──────────────────────────────────────────────────
 (async () => {
-  if (msalApp) {
-    try { await msalApp.handleRedirectPromise(); } catch {}
-  }
-  const accounts = msalApp?.getAllAccounts() || [];
+  if (!msalApp) return;
+  // Handle redirect response (comes back after Microsoft login)
+  try { await msalApp.handleRedirectPromise(); } catch(e) { console.warn(e); }
+
+  const accounts = msalApp.getAllAccounts();
   if (accounts.length === 0) {
-    // No active session — show login gate, hide everything else
-    showLoginGate();
-    return;
+    // Not authenticated — redirect to Microsoft login immediately
+    await msalApp.loginRedirect({ scopes: GRAPH_SCOPES });
+    return; // page will redirect, code below won't run
   }
-  // Authenticated — show app
-  showApp();
+
+  // Authenticated — show app starting on home page
+  showApp(accounts[0]);
+  showPage('home', document.querySelector('.nav-item'));
   await checkApi();
+  // Update home card badge
+  const badge = document.getElementById('home-api-badge');
+  if (badge) badge.innerHTML = online
+    ? '<span style="color:var(--accent)">&#9679; API activa — disponible</span>'
+    : '<span style="color:var(--text3)">&#9675; Requiere PC de trabajo</span>';
   await loadDashboard();
   if (online) await loadCats();
-  updateAuthUI();
-  setInterval(checkApi, 30000);
+  setInterval(async () => {
+    await checkApi();
+    const b = document.getElementById('home-api-badge');
+    if (b) b.innerHTML = online
+      ? '<span style="color:var(--accent)">&#9679; API activa — disponible</span>'
+      : '<span style="color:var(--text3)">&#9675; Requiere PC de trabajo</span>';
+  }, 30000);
 })();
 </script>
 </body>
