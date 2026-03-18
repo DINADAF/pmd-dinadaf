@@ -628,6 +628,13 @@ async function loadKpis() {
   document.getElementById('k-p2').textContent = k.activos_pad2 ?? '—';
   document.getElementById('k-pnm').textContent = k.activos_pnm ?? '—';
   document.getElementById('k-les').textContent = k.total_les ?? 0;
+  if (k.monto_mensual_total != null) {
+    document.getElementById('k-monto').textContent = 'S/ ' + Number(k.monto_mensual_total).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  if (k.periodo_actual) {
+    const p = k.periodo_actual;
+    document.getElementById('k-periodo').textContent = p.slice(0,4) + '-' + p.slice(4,6);
+  }
   if (k.exportado) document.getElementById('last-update').textContent = 'Al ' + new Date(k.exportado).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
 }
 

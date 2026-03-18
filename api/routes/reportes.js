@@ -12,7 +12,14 @@ router.get('/kpi', async (_req, res) => {
         SUM(CASE WHEN p.cod_tipo_pad = 'PAD2' AND p.cod_estado_pad = 'ACT' THEN 1 ELSE 0 END) AS activos_pad2,
         SUM(CASE WHEN p.cod_tipo_pad = 'PNM'  AND p.cod_estado_pad = 'ACT' THEN 1 ELSE 0 END) AS activos_pnm,
         SUM(CASE WHEN p.cod_estado_pad = 'ACT' THEN 1 ELSE 0 END) AS total_activos,
-        SUM(CASE WHEN p.cod_estado_pad = 'LES' THEN 1 ELSE 0 END) AS total_les
+        SUM(CASE WHEN p.cod_estado_pad = 'LES' THEN 1 ELSE 0 END) AS total_les,
+        (SELECT ISNULL(SUM(mr.monto_soles), 0)
+         FROM pad.PAD p2
+         JOIN pad.montos_referencia mr
+           ON mr.cod_nivel = p2.cod_nivel
+           AND FORMAT(GETDATE(), 'yyyyMM') BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
+         WHERE p2.cod_estado_pad = 'ACT') AS monto_mensual_total,
+        FORMAT(GETDATE(), 'yyyyMM') AS periodo_actual
       FROM pad.PAD p
     `);
     res.json(result.recordset[0]);
