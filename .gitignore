@@ -21,10 +21,10 @@ sql/__pycache__/
 Thumbs.db
 desktop.ini
 
-# Exported data CSVs (go to SharePoint)
+# Exported data — NEVER commit to public repo (goes to SharePoint only)
+# GitHub Pages reads from SharePoint via Microsoft Graph API
 web/data/*.csv
-# JSON exports ARE committed so GitHub Pages always shows data
-# web/data/*.json
+web/data/*.json
 
 # Logs
 *.log
