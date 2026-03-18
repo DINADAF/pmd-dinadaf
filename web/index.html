@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plataforma PMD - DINADAF/IPD</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -567,7 +567,7 @@ const MSAL_CONFIG = {
 const DRIVE_ID = 'b!T9pa18s7Q0ucS14QcR9bATc7WiT-ztVPqEwNfjLw_AOIF3HTHWRESYYKCB6vvSs0';
 const GRAPH_SCOPES = ['https://graph.microsoft.com/Files.Read'];
 let msalApp = null;
-try { msalApp = new msal.PublicClientApplication(MSAL_CONFIG); } catch(e) { console.warn('MSAL init failed:', e.message); }
+try { msalApp = new msal.PublicClientApplication(MSAL_CONFIG); } catch(e) { showLoadingMsg('Error MSAL: ' + e.message); console.error('MSAL init failed:', e); }
 
 async function getMsalToken() {
   if (!msalApp) return null;
