@@ -1,7 +1,15 @@
 # Sensitive data - never commit
 data/
-docs/*.pdf
-docs/*.docx
+docs/
+
+# SQL scripts and internal documentation (local only)
+sql/
+CLAUDE.md
+DESIGN_CONTEXT.md
+
+# Scripts de inicio (solo en PC local)
+*.vbs
+*.bat
 
 # Claude Code local settings (may contain command history with credentials)
 .claude/

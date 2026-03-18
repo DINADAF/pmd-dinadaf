@@ -11,7 +11,8 @@
 :root{
 --bg:#F7F6F3;--surface:#FFFFFF;--surface2:#F0EFEC;--border:#E2E0DB;
 --text:#1A1A18;--text2:#6B6A66;--text3:#9C9B97;
---accent:#1D6B4F;--accent-light:#E8F5EE;--accent-dark:#0F4D38;
+--accent:#C8102E;--accent-light:#FDEEF1;--accent-dark:#9E0C24;
+--green:#1D6B4F;--green-light:#E8F5EE;--green-dark:#0F4D38;
 --coral:#D85A30;--coral-light:#FFF0EB;
 --blue:#2563EB;--blue-light:#EFF6FF;
 --amber:#B8860B;--amber-light:#FFF8E1;
@@ -23,7 +24,7 @@
 --transition:0.2s cubic-bezier(0.4,0,0.2,1);
 }
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow-x:hidden}
-.sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:#0F2B1F;color:#fff;display:flex;flex-direction:column;z-index:100}
+.sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:#5C0A14;color:#fff;display:flex;flex-direction:column;z-index:100}
 .sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,0.08)}
 .sidebar-header h1{font-size:15px;font-weight:700;letter-spacing:-0.3px}
 .sidebar-header p{font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px}
@@ -47,6 +48,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .content{padding:28px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;transition:var(--transition);border:none;font-family:inherit}
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-dark)}.btn-primary:disabled{background:#9C9B97;cursor:not-allowed}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:var(--green-dark)}
 .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--surface2)}
 .btn-sm{padding:6px 12px;font-size:12px}
 .btn-ghost{background:none;color:var(--text2);border:none;padding:6px 10px;cursor:pointer}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
@@ -66,11 +68,11 @@ td{padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--surface2)}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
-.badge-act{background:var(--accent-light);color:var(--accent)}
+.badge-act{background:var(--green-light);color:var(--green)}
 .badge-les{background:var(--amber-light);color:var(--amber)}
 .badge-lss{background:var(--coral-light);color:var(--coral)}
 .badge-ret{background:var(--danger-light);color:var(--danger)}
-.badge-ing{background:var(--accent-light);color:var(--accent)}
+.badge-ing{background:var(--green-light);color:var(--green)}
 .badge-cambniv,.badge-camb{background:var(--blue-light);color:var(--blue)}
 .badge-retiro{background:var(--danger-light);color:var(--danger)}
 .badge-pad1{background:var(--blue-light);color:var(--blue)}
@@ -93,7 +95,7 @@ tr:hover td{background:var(--surface2)}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group label{font-size:12px;font-weight:600;color:var(--text2)}
 .form-group input,.form-group select,.form-group textarea{padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);transition:var(--transition)}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,107,79,0.1)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,16,46,0.1)}
 .form-group textarea{resize:vertical;min-height:60px}
 .form-hint{font-size:11px;color:var(--text3)}
 .form-section{margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
@@ -101,19 +103,19 @@ tr:hover td{background:var(--surface2)}
 .form-section-title .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:20px}
 .tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition)}
-.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--text)}.tab.active{color:var(--green);border-bottom-color:var(--green)}
 .tab-content{display:none}.tab-content.active{display:block}
 .search-bar{display:flex;gap:8px;margin-bottom:20px}
 .search-input{flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)}
-.search-input:focus{outline:none;border-color:var(--accent)}
+.search-input:focus{outline:none;border-color:var(--green)}
 .filter-pills{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:var(--transition)}
-.pill:hover,.pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pill:hover,.pill.active{background:var(--green);color:#fff;border-color:var(--green)}
 .alert{padding:12px 16px;border-radius:var(--radius);font-size:13px;display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
 .alert-warning{background:var(--amber-light);color:var(--amber);border:1px solid #E8D5A0}
 .alert-info{background:var(--blue-light);color:var(--blue);border:1px solid #BFDBFE}
 .alert-danger{background:var(--danger-light);color:var(--danger);border:1px solid #FECACA}
-.alert-success{background:var(--accent-light);color:var(--accent);border:1px solid #BBF7D0}
+.alert-success{background:var(--green-light);color:var(--green);border:1px solid #BBF7D0}
 .page{display:none}.page.active{display:block}
 .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
 .empty-state-icon{font-size:40px;margin-bottom:12px;opacity:0.4}
@@ -133,7 +135,7 @@ tr:hover td{background:var(--surface2)}
 .home-logo small{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
 .module-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:900px;width:100%}
 .module-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden}
-.module-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);border-color:var(--accent)}
+.module-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);border-color:var(--accent);border-width:2px}
 .module-card.disabled{opacity:0.6;cursor:default}
 .module-card.disabled:hover{transform:none;box-shadow:none;border-color:var(--border)}
 .module-icon{font-size:32px;margin-bottom:20px}
@@ -154,16 +156,16 @@ tr:hover td{background:var(--surface2)}
 /* ── PERIOD TABLE ── */
 .period-table td .action-btns{display:flex;gap:6px;align-items:center}
 .btn-icon{width:30px;height:30px;border-radius:var(--radius);display:inline-flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;border:none;transition:var(--transition)}
-.btn-edit{background:var(--accent-light);color:var(--accent)}.btn-edit:hover{background:var(--accent);color:#fff}
+.btn-edit{background:var(--green-light);color:var(--green)}.btn-edit:hover{background:var(--green);color:#fff}
 .btn-lock{background:var(--danger-light);color:var(--danger)}.btn-lock:hover{background:var(--danger);color:#fff}
 .btn-dl{background:var(--surface2);color:var(--text2)}.btn-dl:hover{background:var(--border);color:var(--text)}
 .period-closed td{color:var(--text3)}
-.period-badge-open{background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.period-badge-open{background:var(--green-light);color:var(--green);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
 .period-badge-closed{background:var(--surface2);color:var(--text3);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
 
 /* ── BREADCRUMB ── */
 .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text3);margin-bottom:20px}
-.breadcrumb a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:500}.breadcrumb a:hover{text-decoration:underline}
+.breadcrumb a{color:var(--green);cursor:pointer;text-decoration:none;font-weight:500}.breadcrumb a:hover{text-decoration:underline}
 .breadcrumb span{color:var(--text3)}
 
 /* ── MODAL XL (horizontal) ── */
@@ -190,6 +192,7 @@ tr:hover td{background:var(--surface2)}
     <button id="btn-signin" onclick="msalSignIn()" style="background:none;border:1px solid var(--border);color:var(--text2);font-size:11px;cursor:pointer;padding:4px 10px;border-radius:var(--radius);font-family:inherit">Sesion</button>
   </div>
   <div class="home-logo">
+    <div style="display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;padding:5px 14px;border-radius:4px;margin-bottom:14px;text-transform:uppercase">Instituto Peruano del Deporte</div>
     <h1>Sistema de Gestion PMD</h1>
     <p>Unidad Funcional de Gestion de Planificacion y Metodologia Deportiva</p>
     <small>UF-PMD &middot; DINADAF &middot; IPD</small>
@@ -224,21 +227,39 @@ tr:hover td{background:var(--surface2)}
   </div>
   <nav class="sidebar-nav">
     <div class="nav-back" onclick="goHome()">&#8592; Inicio</div>
-    <div class="nav-section" id="nav-section-gestion">
-      <div class="nav-section-title">Principal</div>
-      <div class="nav-item" onclick="showPage('dashboard',this)"><span class="nav-icon">&#9632;</span>Control (Dashboard)</div>
-      <div class="nav-item" id="nav-cambios" onclick="showPage('cambios',this)"><span class="nav-icon">&#9654;</span>Cambios PAD</div>
+
+    <!-- Nav: Gestion PAD -->
+    <div id="nav-gestion" style="display:none">
+      <div class="nav-section">
+        <div class="nav-section-title">Principal</div>
+        <div class="nav-item" onclick="showPage('home',this)"><span class="nav-icon">&#9632;</span>Inicio</div>
+        <div class="nav-item" id="nav-cambios" onclick="showPage('cambios',this)"><span class="nav-icon">&#9654;</span>Cambios PAD</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Reportes</div>
+        <div class="nav-item" onclick="showPage('consolidados',this)"><span class="nav-icon">&#9744;</span>Consolidados</div>
+        <div class="nav-item" onclick="showPage('giros',this)"><span class="nav-icon">&#9745;</span>Giros</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Mantenimiento</div>
+        <div class="nav-item" onclick="showPage('deportistas',this)"><span class="nav-icon">&#9679;</span>Deportistas</div>
+        <div class="nav-item" onclick="showPage('orgs',this)"><span class="nav-icon">&#9830;</span>Organizaciones deportivas</div>
+        <div class="nav-item" onclick="showPage('catalogos',this)"><span class="nav-icon">&#9881;</span>Catalogos</div>
+      </div>
     </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Reportes</div>
-      <div class="nav-item" onclick="showPage('consolidados',this)"><span class="nav-icon">&#9744;</span>Consolidados</div>
-      <div class="nav-item" onclick="showPage('giros',this)"><span class="nav-icon">&#9745;</span>Giros</div>
-    </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Mantenimiento</div>
-      <div class="nav-item" onclick="showPage('deportistas',this)"><span class="nav-icon">&#9679;</span>Deportistas</div>
-      <div class="nav-item" onclick="showPage('orgs',this)"><span class="nav-icon">&#9830;</span>Organizaciones deportivas</div>
-      <div class="nav-item" onclick="showPage('catalogos',this)"><span class="nav-icon">&#9881;</span>Catalogos</div>
+
+    <!-- Nav: Consulta PAD -->
+    <div id="nav-consulta" style="display:none">
+      <div class="nav-section">
+        <div class="nav-section-title">Informacion PAD</div>
+        <div class="nav-item" onclick="showPage('dashboard',this)"><span class="nav-icon">&#9632;</span>Dashboard</div>
+        <div class="nav-item" onclick="showPage('nomina',this)"><span class="nav-icon">&#9654;</span>Nomina PAD</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Referencia</div>
+        <div class="nav-item" onclick="showPage('orgs',this)"><span class="nav-icon">&#9830;</span>Organizaciones deportivas</div>
+        <div class="nav-item" onclick="showPage('catalogos',this)"><span class="nav-icon">&#9881;</span>Niveles y estados</div>
+      </div>
     </div>
   </nav>
   <div class="sidebar-footer">
@@ -248,7 +269,7 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <!-- LOADING SCREEN — shown while MSAL initializes -->
-<div id="loading-screen" style="position:fixed;inset:0;background:#0F2B1F;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+<div id="loading-screen" style="position:fixed;inset:0;background:#5C0A14;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px">
   <div style="text-align:center;color:#fff">
     <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px">UF-PMD / DINADAF / IPD</div>
     <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.5px">Plataforma PMD</h1>
@@ -371,6 +392,7 @@ tr:hover td{background:var(--surface2)}
             <thead><tr><th>Periodo</th><th style="text-align:center">Registros</th><th style="text-align:center">Estado</th><th style="text-align:center">Exportar</th><th style="text-align:center">Acciones</th></tr></thead>
             <tbody id="t-periodos"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Cargando periodos...</td></tr></tbody>
           </table>
+          <div id="periodos-pagination"></div>
         </div>
       </div>
 
@@ -510,6 +532,29 @@ tr:hover td{background:var(--surface2)}
     <!-- MONTOS -->
     <div class="page" id="page-montos">
       <div class="empty-state"><div class="empty-state-icon">&#9830;</div><p>Montos de referencia — proximo</p></div>
+    </div>
+
+    <!-- NOMINA PAD (Consulta PAD — solo lectura) -->
+    <div class="page" id="page-nomina">
+      <div class="search-bar">
+        <input class="search-input" id="q-nomina" placeholder="Buscar por nombre, DNI o federacion..." oninput="filterNomina()">
+      </div>
+      <div class="filter-pills" id="pills-nomina">
+        <span class="pill active" data-f="">Todos</span>
+        <span class="pill" data-f="PAD1">PAD I</span>
+        <span class="pill" data-f="PAD2">PAD II</span>
+        <span class="pill" data-f="PNM">PNM</span>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Nomina PAD &mdash; Deportistas activos <span id="nomina-count" style="font-weight:400;color:var(--text3);font-size:12px"></span></h3>
+          <span style="font-size:12px;color:var(--text3)">Solo lectura</span>
+        </div>
+        <table>
+          <thead><tr><th>DNI</th><th>Deportista</th><th>Federacion</th><th>Programa</th><th>Nivel</th><th>Estado</th></tr></thead>
+          <tbody id="t-nomina"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+        </table>
+      </div>
     </div>
 
   </div>
@@ -712,6 +757,16 @@ let cats = { asociaciones: [], niveles: [] };
 let depData = [];
 let depFilter = '';
 let depSel = null;
+let currentModule = null;
+
+// Pagination for periodos list
+let perioPage = 0;
+const PERIO_PAGE_SIZE = 5;
+let periodosFiltrados = [];
+
+// Nomina PAD
+let nominaData = [];
+let nominaFilter = '';
 
 // ── MSAL / ONEDRIVE ────────────────────────────────────────
 const IS_LOCALHOST = ['localhost','127.0.0.1'].includes(location.hostname);
@@ -966,12 +1021,27 @@ async function loadCambios() {
 }
 
 function renderPeriodos(data) {
+  periodosFiltrados = data || [];
+  perioPage = 0;
+  renderPeriodosPage();
+}
+
+function renderPeriodosPage() {
+  const data = periodosFiltrados;
   const tbody = document.getElementById('t-periodos');
+  const paginEl = document.getElementById('periodos-pagination');
+
   if (!data?.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">No hay periodos registrados.</td></tr>';
+    if (paginEl) paginEl.innerHTML = '';
     return;
   }
-  tbody.innerHTML = data.map(p => {
+
+  const start = perioPage * PERIO_PAGE_SIZE;
+  const page  = data.slice(start, start + PERIO_PAGE_SIZE);
+  const totalPages = Math.ceil(data.length / PERIO_PAGE_SIZE);
+
+  tbody.innerHTML = page.map(p => {
     const per = p.periodo;
     const label = per.slice(0,4)+'-'+per.slice(4,6);
     const cerrado = p.cerrado == 1;
@@ -992,6 +1062,25 @@ function renderPeriodos(data) {
       </td>
     </tr>`;
   }).join('');
+
+  // Pagination controls
+  if (paginEl) {
+    if (totalPages <= 1) {
+      paginEl.innerHTML = '';
+    } else {
+      paginEl.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:10px 16px;border-top:1px solid var(--border);font-size:13px">
+          <button class="btn btn-secondary btn-sm" ${perioPage===0?'disabled':''} onclick="goPerioPage(${perioPage-1})">&#8592;</button>
+          <span style="color:var(--text2);font-weight:600">${perioPage+1} / ${totalPages}</span>
+          <button class="btn btn-secondary btn-sm" ${perioPage>=totalPages-1?'disabled':''} onclick="goPerioPage(${perioPage+1})">&#8594;</button>
+        </div>`;
+    }
+  }
+}
+
+function goPerioPage(page) {
+  perioPage = page;
+  renderPeriodosPage();
 }
 
 function filterPeriodos() {
@@ -1267,6 +1356,49 @@ async function generarConsolidado() {
     <td class="mono">S/ ${r.monto_soles?Number(r.monto_soles).toLocaleString('es-PE',{minimumFractionDigits:2}):'—'}</td></tr>`).join('');
 }
 
+// ── NOMINA PAD (Consulta, solo lectura) ───────────────────
+async function loadNomina() {
+  let d;
+  try {
+    d = online
+      ? await apiGet('/api/reportes/activos')
+      : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json');
+  } catch { d = null; }
+  nominaData = d || [];
+  renderNomina(nominaData);
+}
+
+function renderNomina(data) {
+  const filtered = nominaFilter
+    ? data.filter(r => r.cod_tipo_pad === nominaFilter)
+    : data;
+  document.getElementById('nomina-count').textContent = filtered.length + ' deportistas';
+  const tbody = document.getElementById('t-nomina');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `<tr>
+    <td class="mono">${r.num_documento}</td>
+    <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
+    <td>${r.asociacion||'—'}</td>
+    <td><span class="badge badge-${(r.cod_tipo_pad||'').toLowerCase()}">${(r.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td>
+    <td>${r.nivel_desc||r.cod_nivel||'—'}</td>
+    <td><span class="badge badge-${(r.cod_estado_pad||'act').toLowerCase()}">${r.cod_estado_pad||'ACT'}</span></td>
+  </tr>`).join('');
+}
+
+function filterNomina() {
+  const q = document.getElementById('q-nomina').value.toLowerCase();
+  const filtered = nominaData.filter(r => {
+    const nombre = (r.deportista||(r.ap_paterno+' '+r.ap_materno+' '+r.nombres)||'').toLowerCase();
+    const match  = !q || nombre.includes(q) || (r.num_documento||'').includes(q) || (r.asociacion||'').toLowerCase().includes(q);
+    const filt   = !nominaFilter || r.cod_tipo_pad === nominaFilter;
+    return match && filt;
+  });
+  renderNomina(filtered);
+}
+
 // ── MODAL: CAMBIO ──────────────────────────────────────────
 function toggleMov() {
   const v = document.getElementById('sel-tipo-mov').value;
@@ -1412,9 +1544,16 @@ function enterModule(mod) {
       return;
     }
   }
+
+  currentModule = mod;
   document.getElementById('home-screen').classList.add('hidden');
   document.getElementById('sidebar').style.display = 'flex';
   document.getElementById('main-app').style.display = 'flex';
+
+  // Show correct sidebar navigation
+  document.getElementById('nav-gestion').style.display  = mod === 'gestion'  ? 'block' : 'none';
+  document.getElementById('nav-consulta').style.display = mod === 'consulta' ? 'block' : 'none';
+
   if (mod === 'gestion') {
     document.getElementById('sidebar-module-title').textContent = 'Gestion PAD';
     showPage('home', null);
@@ -1461,11 +1600,12 @@ function showPage(id, el) {
   document.getElementById('page-'+id)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el?.classList.add('active');
-  const titles = {home:'Gestion PAD',dashboard:'Dashboard',deportistas:'Deportistas',cambios:'Cambios PAD',consolidados:'Consolidados',giros:'Giros',catalogos:'Catalogos',orgs:'Organizaciones deportivas',montos:'Montos de referencia'};
+  const titles = {home:'Gestion PAD',dashboard:'Dashboard',deportistas:'Deportistas',nomina:'Nomina PAD',cambios:'Cambios PAD',consolidados:'Consolidados',giros:'Giros',catalogos:'Catalogos',orgs:'Organizaciones deportivas',montos:'Montos de referencia'};
   document.getElementById('page-title').textContent = titles[id]||id;
   const btnNuevo = document.getElementById('btn-nuevo');
   if (btnNuevo) btnNuevo.style.display = 'none'; // btn is inside each page now
   if (id==='deportistas') loadDep();
+  if (id==='nomina') loadNomina();
   if (id==='cambios') { volverAPeriodos && (periodoDetalle=null); document.getElementById('cambios-periodos-view').style.display='block'; document.getElementById('cambios-detalle-view').style.display='none'; loadCambios(); }
   if (id==='catalogos'||id==='orgs') loadCats();
   if (id==='home') loadHomeModule();
@@ -1478,6 +1618,7 @@ document.querySelectorAll('.filter-pills').forEach(group => {
       group.querySelectorAll('.pill').forEach(pp => pp.classList.remove('active'));
       p.classList.add('active');
       if (group.id === 'pills-dep') { depFilter = p.dataset.f||''; filterDep(); }
+      if (group.id === 'pills-nomina') { nominaFilter = p.dataset.f||''; filterNomina(); }
     });
   });
 });
@@ -1528,7 +1669,7 @@ function showLoadingMsg(msg) {
       btnRow.style.cssText = 'margin-top:16px;display:flex;gap:12px';
       const btn = document.createElement('button');
       btn.textContent = 'Reintentar login';
-      btn.style.cssText = 'background:#1D6B4F;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;cursor:pointer';
+      btn.style.cssText = 'background:#C8102E;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;cursor:pointer';
       btn.onclick = () => { localStorage.clear(); sessionStorage.clear(); msalApp.loginRedirect({ scopes: GRAPH_SCOPES }); };
       btnRow.appendChild(btn);
       const btn2 = document.createElement('button');
