@@ -1,0 +1,124 @@
+const express = require('express');
+const router = express.Router();
+const { sql, query } = require('../db');
+
+// Search athlete by DNI
+router.get('/buscar', async (req, res) => {
+  const { dni } = req.query;
+  if (!dni) return res.status(400).json({ error: 'DNI requerido' });
+
+  try {
+    const result = await query(
+      `SELECT d.cod_deportista, d.num_documento, d.tipo_documento,
+              d.ap_paterno, d.ap_materno, d.nombres,
+              d.sexo, d.fecha_nac, d.num_cuenta, d.activo,
+              a.nombre AS asociacion, d.cod_asociacion,
+              d.cod_ubigeo, d.agrupacion
+       FROM pad.Deportistas d
+       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
+       WHERE d.num_documento = @dni`,
+      [{ name: 'dni', type: sql.VarChar(20), value: dni }]
+    );
+    if (result.recordset.length === 0) {
+      return res.json({ found: false });
+    }
+    const deportista = result.recordset[0];
+
+    // Get active PAD records
+    const padResult = await query(
+      `SELECT p.cod_pad, p.cod_tipo_pad, p.cod_nivel, p.cod_estado_pad,
+              p.es_permanente, p.fecha_ingreso, p.fecha_retiro,
+              n.descripcion AS nivel_desc,
+              mr.monto_soles
+       FROM pad.PAD p
+       JOIN cat.Nivel n ON p.cod_nivel = n.cod_nivel
+       LEFT JOIN pad.montos_referencia mr
+           ON mr.cod_nivel = p.cod_nivel
+           AND mr.periodo = FORMAT(GETDATE(), 'yyyyMM')
+       WHERE p.cod_deportista = @cod
+       ORDER BY p.cod_estado_pad, p.fecha_ingreso DESC`,
+      [{ name: 'cod', type: sql.Int, value: deportista.cod_deportista }]
+    );
+
+    res.json({ found: true, deportista, pad_records: padResult.recordset });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create new athlete
+router.post('/', async (req, res) => {
+  const {
+    num_documento, tipo_documento, ap_paterno, ap_materno, nombres,
+    sexo, fecha_nac, cod_asociacion, cod_ubigeo, num_cuenta,
+    correo, telefono, agrupacion
+  } = req.body;
+
+  try {
+    const result = await query(
+      `INSERT INTO pad.Deportistas
+         (num_documento, tipo_documento, ap_paterno, ap_materno, nombres,
+          sexo, fecha_nac, cod_asociacion, cod_ubigeo, num_cuenta,
+          correo, telefono, agrupacion, activo, fecha_registro)
+       OUTPUT INSERTED.cod_deportista
+       VALUES
+         (@num_documento, @tipo_documento, @ap_paterno, @ap_materno, @nombres,
+          @sexo, @fecha_nac, @cod_asociacion, @cod_ubigeo, @num_cuenta,
+          @correo, @telefono, @agrupacion, 0, GETDATE())`,
+      [
+        { name: 'num_documento', type: sql.VarChar(20), value: num_documento },
+        { name: 'tipo_documento', type: sql.VarChar(3), value: tipo_documento || 'DNI' },
+        { name: 'ap_paterno', type: sql.VarChar(60), value: ap_paterno },
+        { name: 'ap_materno', type: sql.VarChar(60), value: ap_materno },
+        { name: 'nombres', type: sql.VarChar(80), value: nombres },
+        { name: 'sexo', type: sql.Char(1), value: sexo },
+        { name: 'fecha_nac', type: sql.Date, value: fecha_nac },
+        { name: 'cod_asociacion', type: sql.SmallInt, value: cod_asociacion },
+        { name: 'cod_ubigeo', type: sql.Char(6), value: cod_ubigeo || null },
+        { name: 'num_cuenta', type: sql.VarChar(30), value: num_cuenta || null },
+        { name: 'correo', type: sql.VarChar(100), value: correo || null },
+        { name: 'telefono', type: sql.VarChar(20), value: telefono || null },
+        { name: 'agrupacion', type: sql.VarChar(100), value: agrupacion || null },
+      ]
+    );
+    res.json({ cod_deportista: result.recordset[0].cod_deportista });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update bank account
+router.patch('/:cod/cuenta', async (req, res) => {
+  const { num_cuenta, tipo_giro } = req.body; // tipo_giro: 'CUENTA' | 'OPE'
+  try {
+    await query(
+      `UPDATE pad.Deportistas SET num_cuenta = @cuenta WHERE cod_deportista = @cod`,
+      [
+        { name: 'cuenta', type: sql.VarChar(30), value: tipo_giro === 'OPE' ? null : num_cuenta },
+        { name: 'cod', type: sql.Int, value: parseInt(req.params.cod) },
+      ]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get catalogs needed for forms
+router.get('/catalogos', async (_req, res) => {
+  try {
+    const [asociaciones, niveles, ubigeo_sample] = await Promise.all([
+      query(`SELECT cod_asociacion, nombre FROM pad.Asociacion_Deportiva ORDER BY nombre`),
+      query(`SELECT cod_nivel, descripcion, cod_tipo_pad, activo FROM cat.Nivel WHERE activo = 1 ORDER BY cod_tipo_pad, cod_nivel`),
+      query(`SELECT TOP 0 cod_ubigeo FROM cat.ubigeo`), // just to confirm table exists
+    ]);
+    res.json({
+      asociaciones: asociaciones.recordset,
+      niveles: niveles.recordset,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

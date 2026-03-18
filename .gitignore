@@ -1,0 +1,29 @@
+# Sensitive data - never commit
+data/
+docs/*.pdf
+docs/*.docx
+
+# Claude Code local settings (may contain command history with credentials)
+.claude/
+
+# Environment variables (DB credentials)
+api/.env
+api/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+sql/__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Exported data (goes to SharePoint, not git)
+web/data/*.csv
+web/data/*.json
+
+# Logs
+*.log

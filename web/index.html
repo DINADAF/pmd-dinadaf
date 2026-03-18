@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAD — Sistema de Gestión | DINADAF · IPD</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="header-logo">IPD</div>
+        <div>
+          <div class="header-title">Sistema PAD</div>
+          <div class="header-subtitle">DINADAF — Programa de Apoyo al Deportista</div>
+        </div>
+      </div>
+      <div class="header-status">
+        <span id="api-indicator" class="status-dot offline"></span>
+        <span id="api-label" class="status-label">Módulo de gestión offline</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="tab-nav">
+    <div class="tab-nav-inner">
+      <button class="tab-btn active" data-tab="dashboard">Reportería</button>
+      <button class="tab-btn" id="tab-gestion-btn" data-tab="gestion">Gestión PAD</button>
+      <button class="tab-btn" id="tab-cuenta-btn" data-tab="cuenta">Número de Cuenta</button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ═══════════════════════════════════════════
+         TAB 1 — DASHBOARD (always visible)
+    ══════════════════════════════════════════════ -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div class="section-header">
+        <h2>Resumen PAD <span id="periodo-actual" class="badge-periodo"></span></h2>
+        <span id="last-update" class="text-muted small"></span>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">PAD I Activos</div>
+          <div id="kpi-pad1" class="kpi-value">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">PAD II Activos</div>
+          <div id="kpi-pad2" class="kpi-value">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">PNM Activos</div>
+          <div id="kpi-pnm" class="kpi-value">—</div>
+        </div>
+        <div class="kpi-card kpi-total">
+          <div class="kpi-label">Total Activos</div>
+          <div id="kpi-total" class="kpi-value">—</div>
+        </div>
+        <div class="kpi-card kpi-alert">
+          <div class="kpi-label">En LES (lesionados)</div>
+          <div id="kpi-les" class="kpi-value">—</div>
+        </div>
+      </div>
+
+      <!-- Activos table -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h3>Deportistas Activos</h3>
+          <span id="activos-count" class="text-muted small"></span>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Deportista</th>
+                <th>DNI</th>
+                <th>Tipo</th>
+                <th>Nivel</th>
+                <th>Asociación</th>
+                <th class="text-right">Monto S/</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-activos-body">
+              <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Movimientos recientes -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h3>Últimos Movimientos</h3>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Deportista</th>
+                <th>PAD</th>
+                <th>Nivel</th>
+                <th>Nro. Informe</th>
+                <th>Período</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-movimientos-body">
+              <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 2 — GESTIÓN PAD (requires local API)
+    ══════════════════════════════════════════════ -->
+    <section id="tab-gestion" class="tab-content">
+      <!-- Offline message -->
+      <div id="gestion-offline" class="offline-msg">
+        <div class="offline-icon">🔒</div>
+        <h3>Módulo de gestión no disponible</h3>
+        <p>Este módulo requiere que el servidor local esté activo en la PC de administración.</p>
+        <p class="text-muted small">Si eres el administrador, inicia el servidor con: <code>npm start</code> en la carpeta <code>api/</code></p>
+      </div>
+
+      <!-- Online: Cambios PAD form -->
+      <div id="gestion-online" class="hidden">
+        <div class="section-header">
+          <h2>Registro de Cambios PAD</h2>
+          <button id="btn-exportar" class="btn btn-secondary">Exportar datos</button>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+
+            <!-- Step 1: Movement type -->
+            <div class="form-section">
+              <label class="form-label">Tipo de movimiento</label>
+              <div class="btn-group" id="tipo-mov-group">
+                <button class="mov-btn active" data-tipo="ING">Ingreso</button>
+                <button class="mov-btn" data-tipo="CAMBNIV">Cambio de Nivel</button>
+                <button class="mov-btn" data-tipo="RET">Retiro</button>
+              </div>
+            </div>
+
+            <!-- Step 2: Athlete search -->
+            <div class="form-section">
+              <label class="form-label">DNI del deportista</label>
+              <div class="input-group">
+                <input type="text" id="input-dni" class="form-input" placeholder="Ingrese DNI" maxlength="12" />
+                <button id="btn-buscar" class="btn btn-primary">Buscar</button>
+              </div>
+              <div id="deportista-info" class="deportista-card hidden"></div>
+            </div>
+
+            <!-- Step 3: PAD details -->
+            <div id="form-pad-details" class="hidden">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Tipo PAD</label>
+                  <select id="sel-tipo-pad" class="form-input">
+                    <option value="PAD1">PAD I</option>
+                    <option value="PAD2">PAD II</option>
+                    <option value="PNM">PNM</option>
+                  </select>
+                </div>
+                <div class="form-group" id="grupo-nivel">
+                  <label class="form-label">Nivel</label>
+                  <select id="sel-nivel" class="form-input"></select>
+                </div>
+                <div class="form-group hidden" id="grupo-nivel-anterior">
+                  <label class="form-label">Nivel anterior</label>
+                  <select id="sel-nivel-anterior" class="form-input"></select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Nro. Informe</label>
+                  <input type="text" id="input-informe" class="form-input" placeholder="Ej: Memorando N° 000284-2025-DINADAF" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Período vigencia</label>
+                  <input type="text" id="input-periodo" class="form-input" placeholder="YYYYMM" maxlength="6" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Motivo</label>
+                <input type="text" id="input-motivo" class="form-input" placeholder="Motivo del movimiento" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Detalle del evento</label>
+                <textarea id="input-detalle" class="form-input" rows="2" placeholder="Descripción del evento deportivo o causal"></textarea>
+              </div>
+
+              <!-- Expedientes -->
+              <div class="form-section">
+                <label class="form-label">Expedientes</label>
+                <div id="expedientes-list">
+                  <div class="expediente-row">
+                    <select class="form-input exp-tipo" style="width:160px">
+                      <option value="INFORME">Informe</option>
+                      <option value="EXPEDIENTE" selected>Expediente</option>
+                      <option value="OFICIO">Oficio</option>
+                      <option value="RESOLUCION">Resolución</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                    <input type="text" class="form-input exp-nro" placeholder="Nro. expediente" />
+                    <button class="btn btn-icon btn-remove-exp" title="Quitar">✕</button>
+                  </div>
+                </div>
+                <button id="btn-add-exp" class="btn btn-link mt-1">+ Agregar expediente</button>
+              </div>
+
+              <div class="form-actions">
+                <button id="btn-guardar" class="btn btn-primary btn-lg">Guardar movimiento</button>
+                <button id="btn-limpiar" class="btn btn-ghost">Limpiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent movements in this session -->
+        <div class="card mt-4">
+          <div class="card-header"><h3>Movimientos registrados hoy</h3></div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr><th>Tipo</th><th>Deportista</th><th>PAD</th><th>Nivel</th><th>Informe</th><th>Estado</th></tr>
+              </thead>
+              <tbody id="tabla-session-body">
+                <tr><td colspan="6" class="text-center text-muted">Ningún movimiento registrado en esta sesión</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 3 — NÚMERO DE CUENTA
+    ══════════════════════════════════════════════ -->
+    <section id="tab-cuenta" class="tab-content">
+      <div id="cuenta-offline" class="offline-msg">
+        <div class="offline-icon">🔒</div>
+        <h3>Módulo no disponible</h3>
+        <p>Requiere servidor local activo.</p>
+      </div>
+      <div id="cuenta-online" class="hidden">
+        <div class="section-header"><h2>Actualización de Número de Cuenta</h2></div>
+        <div class="card" style="max-width:520px">
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">DNI del deportista</label>
+              <div class="input-group">
+                <input type="text" id="cuenta-dni" class="form-input" placeholder="Ingrese DNI" maxlength="12" />
+                <button id="btn-buscar-cuenta" class="btn btn-primary">Buscar</button>
+              </div>
+            </div>
+            <div id="cuenta-deportista-info" class="deportista-card hidden"></div>
+            <div id="form-cuenta" class="hidden">
+              <div class="form-group">
+                <label class="form-label">Tipo de giro</label>
+                <div class="btn-group">
+                  <button class="giro-btn active" data-giro="CUENTA">Número de cuenta</button>
+                  <button class="giro-btn" data-giro="OPE">OPE (por DNI)</button>
+                </div>
+              </div>
+              <div id="grupo-num-cuenta" class="form-group">
+                <label class="form-label">Número de cuenta Banco de la Nación</label>
+                <input type="text" id="input-num-cuenta" class="form-input" placeholder="Número de cuenta" />
+              </div>
+              <div class="form-actions">
+                <button id="btn-guardar-cuenta" class="btn btn-primary">Actualizar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: Nuevo deportista -->
+  <div id="modal-deportista" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Registrar nuevo deportista</h3>
+        <button class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ap. Paterno *</label>
+            <input type="text" id="new-ap-paterno" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ap. Materno *</label>
+            <input type="text" id="new-ap-materno" class="form-input" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombres *</label>
+          <input type="text" id="new-nombres" class="form-input" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tipo doc.</label>
+            <select id="new-tipo-doc" class="form-input">
+              <option value="DNI">DNI</option>
+              <option value="CE">CE</option>
+              <option value="PAS">Pasaporte</option>
+              <option value="OTR">Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nro. documento *</label>
+            <input type="text" id="new-num-doc" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sexo *</label>
+            <select id="new-sexo" class="form-input">
+              <option value="M">Masculino</option>
+              <option value="F">Femenino</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha nacimiento *</label>
+            <input type="date" id="new-fecha-nac" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Asociación *</label>
+            <select id="new-asociacion" class="form-input"></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Correo</label>
+            <input type="email" id="new-correo" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="text" id="new-telefono" class="form-input" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-crear-deportista" class="btn btn-primary">Crear deportista</button>
+        <button class="btn btn-ghost modal-close-btn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST notifications -->
+  <div id="toast-container"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
