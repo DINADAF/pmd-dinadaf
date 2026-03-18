@@ -163,15 +163,16 @@ Internal (Tesorería):
   - `db.js` — mssql connection pool (dotenv config)
   - `routes/deportistas.js` — Search/create athletes, update bank accounts, get catalogs
   - `routes/movimientos.js` — Register ING/CAMBNIV/RET in single transaction; GET recientes
-  - `routes/reportes.js` — KPI aggregates, active athletes list, export to web/data/
-  - `.env` — DB credentials (gitignored; use .env.example as template)
+  - `routes/reportes.js` — KPI aggregates (with monto_mensual_total), active athletes list, export JSON to OneDrive
+  - `routes/reportes-pdf.js` — PDF generation: consolidado-tecnico, consolidado-economico, cambios-pad (SUB-FO-24)
+  - `routes/reportes-excel.js` — Excel generation: giro (with OPE/apoderado rules), consolidado-tecnico
+  - `sharepoint.js` — OneDrive upload via Microsoft Graph API (device code auth + refresh token)
+  - `setup-sharepoint-auth.js` — One-time auth setup for OneDrive access (device code flow)
+  - `.token-cache.json` — MSAL token cache (gitignored)
+  - `.env` — DB + Azure AD credentials (gitignored; use .env.example as template)
 - `web/` — GitHub Pages frontend (public, no sensitive data)
-  - `index.html` — Main SPA; DM Sans + JetBrains Mono; sidebar #0F2B1F
-  - `css/styles.css` — Design system (tokens: --accent #1D6B4F, badges, cards)
-  - `js/api-client.js` — HTTP client; detects local API with 2.5s timeout
-  - `js/app.js` — Main app logic; tabs, modals, ING/CAMBNIV/RET forms
-  - `js/dashboard.js` — KPI cards, movements table, summary charts
-  - `data/` — JSON exports from API (gitignored; will flow via SharePoint)
+  - `index.html` — Main SPA with MSAL.js auth gate; DM Sans + JetBrains Mono; sidebar #0F2B1F
+  - `data/` — JSON exports from API (gitignored; flows via OneDrive)
 - `.github/workflows/pages.yml` — Deploys web/ to GitHub Pages on push to master
 - `DESIGN_CONTEXT.md` — Design decisions, architecture, project history
 - `CLAUDE.md` — This file (keep in English, update frequently)
@@ -199,48 +200,52 @@ Internal (Tesorería):
 - ✅ Financial validation: S/ 101,138,080.40 total historical 2013-2026
 - ✅ num_cuenta loaded from "matriz de cuentas 2020 a 2026_pad.xlsx"
 - ✅ Apoderados loaded from "Relación de menores de edad"
-- ⚠️ BUG PENDING: Deportistas.activo shows 2,011 active instead of 273
-  - Fix: `UPDATE d SET activo = 0 FROM pad.Deportistas d WHERE NOT EXISTS (SELECT 1 FROM pad.PAD p WHERE p.cod_deportista = d.cod_deportista AND p.cod_estado_pad = 'ACT');`
-  - Also needs: `UPDATE d SET activo = 1 FROM pad.Deportistas d WHERE EXISTS (SELECT 1 FROM pad.PAD p WHERE p.cod_deportista = d.cod_deportista AND p.cod_estado_pad = 'ACT');`
-  - Then verify: `SELECT COUNT(*) FROM pad.Deportistas WHERE activo = 1;` (should be 273)
+- ✅ Deportistas.activo bug fixed: 273 active matches PAD.cod_estado_pad='ACT' count
 
 ### Local API ✅
 - ✅ Node.js/Express API running on port 3001 (api/ directory)
-- ✅ Routes: /api/deportistas, /api/movimientos, /api/reportes
+- ✅ Routes: /api/deportistas, /api/movimientos, /api/reportes, /api/pdf, /api/excel
 - ✅ Single-transaction POST /api/movimientos handles ING/CAMBNIV/RET
 - ✅ GET /api/movimientos/recientes — last 50 movements
-- ✅ POST /api/reportes/exportar — exports JSON to web/data/
+- ✅ POST /api/reportes/exportar — exports JSON to OneDrive via Microsoft Graph
+- ✅ GET /api/reportes/kpi — includes monto_mensual_total and periodo_actual
+- ✅ PDF reports (pdfkit): consolidado-tecnico, consolidado-economico, cambios-pad
+- ✅ Excel reports (exceljs): giro (with OPE/apoderado rules), consolidado-tecnico
 - ✅ CORS configured for localhost + *.github.io
 
 ### Web Platform ✅
-- ✅ GitHub organization created: DINADAF (dinadaf@ipd.gob.pe); rencisov added as co-owner
-- ✅ GitHub Pages repo: dinadaf/pmd-dinadaf → https://dinadaf.github.io/pmd-dinadaf/
-- ✅ web/ frontend deployed: Dashboard, Deportistas, Cambios PAD, Consolidados tabs
-- ✅ Two-module architecture: Module 1 (dashboard, always available) + Module 2 (data entry, only when local API active)
+- ✅ GitHub organization: DINADAF (dinadaf@ipd.gob.pe); repo: dinadaf/pmd-dinadaf
+- ✅ GitHub Pages: https://dinadaf.github.io/pmd-dinadaf/
+- ✅ MSAL.js auth gate: requires IPD institutional login (Microsoft Entra ID)
+- ✅ Home page with two module cards: Dashboard/Reportes + Gestión PAD
+- ✅ Two-module architecture: Module 1 (dashboard, always available) + Module 2 (data entry, requires local API)
 - ✅ API status indicator: green dot = online, gray = offline; offline banner shown
-- ✅ Security: web/data/*.json gitignored — sensitive data never in public repo
+- ✅ Consolidados page: PDF + Excel download buttons (Técnico, Económico, Cambios PAD)
+- ✅ Giros page: program selector + period input + Excel GIRO download
 - ✅ Design system: DM Sans + JetBrains Mono, accent #1D6B4F, sidebar #0F2B1F
 - ✅ Badges: ACT (green), LES (amber), LSS (blue), RET (gray), PAD1/PAD2/PNM
-- ✅ Forms: Cambios PAD (ING/CAMBNIV/RET), Nuevo Deportista (with apoderado section), Número de cuenta
 
-### SharePoint Integration 🔄 IN PROGRESS
-- 🔄 Azure AD app registration in progress (dinadaf@ipd.gob.pe — "Usuario" role, not admin)
-- 🔄 Tenant: IPD PERU S.A.C. (IPD.GOB.PE), ID: 19ccc9d6-ff9b-4dc4-914e-f195773cb1a2, free Entra ID tier
-- ⏸️ NEXT: Verify if "Usuario" role can register apps; if not, coordinate with IPD IT admin
-- ⏸️ NEXT: If app registered → grant Microsoft Graph Files.Read.All permission → update web/ to auth via MSAL.js
-- ⏸️ NEXT: Build export pipeline: API exports JSON → auto-uploads to SharePoint (Microsoft Graph PUT)
-- ⏸️ ALTERNATIVE: If Azure AD blocked → use anonymous SharePoint sharing link (simpler, less secure)
+### OneDrive Integration 🔄 IN PROGRESS
+- ✅ Azure AD app registered: "PAD IPD Dashboard", Client ID 4ebfc360-a6b5-4330-8a73-682768a95b64
+- ✅ Tenant: IPD PERU S.A.C. (IPD.GOB.PE), ID: 19ccc9d6-ff9b-4dc4-914e-f195773cb1a2
+- ✅ OneDrive upload working: device code flow + refresh token, uploads to /pad-data/
+- ✅ MSAL.js loaded in web/ for browser-side auth (cdn.jsdelivr.net)
+- ⚠️ MSAL auth flow returns `invalid_request` — SPA redirect URI configured but login fails
+  - Azure app has SPA platform with `https://dinadaf.github.io/pmd-dinadaf/` redirect URI
+  - Error occurs in `handleRedirectPromise()` after Microsoft login attempt
+  - NEXT: Debug with browser console; may need Azure admin to verify app config
 
 ### Pending
-- ⏸️ Stored procedures: sp_registrar_ingreso, sp_registrar_retiro, sp_registrar_cambniv (API handles this logic directly for now)
+- ⏸️ MSAL authentication: fix `invalid_request` error to complete auth gate
+- ⏸️ OneDrive data flow for offline dashboard: read JSON from OneDrive via Graph API when local API is off
+- ⏸️ Azure AD app rename: "PAD IPD Dashboard" → "PMD DINADAF"
+- ⏸️ Stored procedures: sp_registrar_ingreso, sp_registrar_retiro, sp_registrar_cambniv (API handles logic directly for now)
 - ⏸️ LES/LSS states: 0 records currently (expected; system ready when needed)
 - ⏸️ Cambios PAD 2013: source file not found
-- ⏸️ Giros module: placeholder in web/ (low priority)
 - ⏸️ Montos module: placeholder in web/ (low priority)
 
 ### Future
-- ⏸️ FUTURE: Automated PDF report generation from gold views
-- ⏸️ FUTURE: Power BI dashboard reading from SharePoint
+- ⏸️ FUTURE: Power BI dashboard reading from OneDrive exports
 - ⏸️ FUTURE: Clickable ruta_documento from dashboard
 - ⏸️ FUTURE: Power Automate flows for area team notifications
 
