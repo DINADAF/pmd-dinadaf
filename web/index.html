@@ -299,12 +299,15 @@ tr:hover td{background:var(--surface2)}
         <div class="tab" onclick="switchTab(this,'tab-chg')">Cambios PAD</div>
       </div>
       <div class="tab-content active" id="tab-tec">
-        <div class="alert alert-info">&#9432; Los consolidados se generan desde los datos registrados en el sistema.</div>
-        <div style="display:flex;gap:12px;margin-bottom:20px">
+        <div class="alert alert-info">&#9432; Los consolidados se generan desde los datos registrados en el sistema. Requiere API local activa.</div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
           <select id="sel-tipo-cons" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
-            <option value="">Todos los programas</option><option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
+            <option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
           </select>
           <button class="btn btn-primary" onclick="generarConsolidado()">Ver consolidado</button>
+          <span style="border-left:1px solid var(--border);height:24px"></span>
+          <button class="btn btn-secondary btn-sm" onclick="descargarReporte('pdf','consolidado-tecnico')">&#8595; PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="descargarReporte('excel','consolidado-tecnico')">&#8595; Excel</button>
         </div>
         <div class="card">
           <div class="card-header"><h3 id="cons-titulo">Consolidado Tecnico</h3></div>
@@ -314,14 +317,34 @@ tr:hover td{background:var(--surface2)}
           </table>
         </div>
       </div>
-      <div class="tab-content" id="tab-eco"><div class="empty-state"><div class="empty-state-icon">&#9744;</div><p>Consolidado economico — proximo</p></div></div>
-      <div class="tab-content" id="tab-chg"><div class="empty-state"><div class="empty-state-icon">&#9744;</div><p>Reporte de cambios (SUB-FO-24) — proximo</p></div></div>
+      <div class="tab-content" id="tab-eco">
+        <div class="alert alert-info">&#9432; Consolidado economico con datos de cuentas bancarias y apoderados. Requiere API local activa.</div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+          <select id="sel-tipo-eco" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
+            <option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
+          </select>
+          <button class="btn btn-primary" onclick="descargarReporte('pdf','consolidado-economico','sel-tipo-eco')">&#8595; Descargar PDF</button>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-chg">
+        <div class="alert alert-info">&#9432; Registro de cambios PAD (SUB-FO-24). Requiere API local activa.</div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+          <input type="month" id="inp-periodo-cambios" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
+          <button class="btn btn-primary" onclick="descargarCambiosPdf()">&#8595; Descargar PDF</button>
+        </div>
+      </div>
     </div>
 
     <!-- GIROS -->
     <div class="page" id="page-giros">
-      <div class="alert alert-info">&#9432; El giro reemplaza automaticamente menores de edad por sus apoderados. Deportistas sin cuenta se marcan como OPE.</div>
-      <div class="empty-state"><div class="empty-state-icon">&#9745;</div><p>Modulo de giros — proximo</p></div>
+      <div class="alert alert-info">&#9432; El giro reemplaza automaticamente menores de edad por sus apoderados. Deportistas sin cuenta se marcan como OPE (pago por DNI). Requiere API local activa.</div>
+      <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+        <select id="sel-tipo-giro" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
+          <option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
+        </select>
+        <input type="month" id="inp-periodo-giro" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
+        <button class="btn btn-primary" onclick="descargarGiro()">&#8595; Descargar Excel GIRO</button>
+      </div>
     </div>
 
     <!-- CATALOGOS -->
@@ -775,6 +798,34 @@ async function loadCambios() {
     <td class="mono" style="font-size:11px">${r.nro_informe||'—'}</td></tr>`).join('');
 }
 
+// ── REPORT DOWNLOADS ──────────────────────────────────────
+function currentPeriodo() {
+  const d = new Date();
+  return d.getFullYear() + String(d.getMonth()+1).padStart(2,'0');
+}
+
+function descargarReporte(format, report, selId) {
+  if (!online) { alert('API local no disponible'); return; }
+  const tipo = document.getElementById(selId || 'sel-tipo-cons')?.value || 'PAD1';
+  const periodo = currentPeriodo();
+  window.open(`${API}/api/${format}/${report}?tipo=${tipo}&periodo=${periodo}`, '_blank');
+}
+
+function descargarCambiosPdf() {
+  if (!online) { alert('API local no disponible'); return; }
+  const inp = document.getElementById('inp-periodo-cambios');
+  const periodo = inp?.value ? inp.value.replace('-','') : currentPeriodo();
+  window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}`, '_blank');
+}
+
+function descargarGiro() {
+  if (!online) { alert('API local no disponible'); return; }
+  const tipo = document.getElementById('sel-tipo-giro')?.value || 'PAD1';
+  const inp = document.getElementById('inp-periodo-giro');
+  const periodo = inp?.value ? inp.value.replace('-','') : currentPeriodo();
+  window.open(`${API}/api/excel/giro?tipo=${tipo}&periodo=${periodo}`, '_blank');
+}
+
 // ── CATALOGOS ──────────────────────────────────────────────
 async function loadCats() {
   if (!online) return;
@@ -974,10 +1025,13 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target===m) m.classList.remove('show'); });
 });
 
-// Set default period
+// Set default periods
 const now = new Date();
-const inp = document.getElementById('inp-periodo');
-if (inp) inp.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+['inp-periodo','inp-periodo-cambios','inp-periodo-giro'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.value = defPer;
+});
 
 // ── INIT ──────────────────────────────────────────────────
 function showLoadingMsg(msg) {
