@@ -104,6 +104,110 @@ router.patch('/:cod/cuenta', async (req, res) => {
   }
 });
 
+// Get single deportista by cod_deportista
+router.get('/:cod(\\d+)', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT d.*, a.nombre AS asociacion_nombre
+       FROM pad.Deportistas d
+       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
+       WHERE d.cod_deportista = @cod`,
+      [{ name: 'cod', type: sql.Int, value: parseInt(req.params.cod) }]
+    );
+    if (!result.recordset.length) return res.status(404).json({ error: 'No encontrado' });
+    res.json(result.recordset[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update all deportista fields
+router.put('/:cod(\\d+)', async (req, res) => {
+  const {
+    num_documento, tipo_documento, ap_paterno, ap_materno, nombres,
+    sexo, fecha_nac, cod_asociacion, cod_ubigeo, num_cuenta,
+    correo, telefono, agrupacion
+  } = req.body;
+  try {
+    await query(
+      `UPDATE pad.Deportistas SET
+         num_documento  = @num_documento,
+         tipo_documento = @tipo_documento,
+         ap_paterno     = @ap_paterno,
+         ap_materno     = @ap_materno,
+         nombres        = @nombres,
+         sexo           = @sexo,
+         fecha_nac      = @fecha_nac,
+         cod_asociacion = @cod_asociacion,
+         cod_ubigeo     = @cod_ubigeo,
+         num_cuenta     = @num_cuenta,
+         correo         = @correo,
+         telefono       = @telefono,
+         agrupacion     = @agrupacion
+       WHERE cod_deportista = @cod`,
+      [
+        { name: 'num_documento',  type: sql.VarChar(20),  value: num_documento },
+        { name: 'tipo_documento', type: sql.VarChar(3),   value: tipo_documento || 'DNI' },
+        { name: 'ap_paterno',     type: sql.VarChar(60),  value: ap_paterno },
+        { name: 'ap_materno',     type: sql.VarChar(60),  value: ap_materno },
+        { name: 'nombres',        type: sql.VarChar(80),  value: nombres },
+        { name: 'sexo',           type: sql.Char(1),      value: sexo },
+        { name: 'fecha_nac',      type: sql.Date,         value: fecha_nac },
+        { name: 'cod_asociacion', type: sql.SmallInt,     value: cod_asociacion },
+        { name: 'cod_ubigeo',     type: sql.Char(6),      value: cod_ubigeo || null },
+        { name: 'num_cuenta',     type: sql.VarChar(30),  value: num_cuenta || null },
+        { name: 'correo',         type: sql.VarChar(100), value: correo || null },
+        { name: 'telefono',       type: sql.VarChar(20),  value: telefono || null },
+        { name: 'agrupacion',     type: sql.VarChar(100), value: agrupacion || null },
+        { name: 'cod',            type: sql.Int,          value: parseInt(req.params.cod) },
+      ]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all organizaciones
+router.get('/organizaciones/lista', async (_req, res) => {
+  try {
+    const result = await query(
+      `SELECT cod_asociacion, nombre, nombre_formal, tipo_organizacion, disciplina, activo
+       FROM pad.Asociacion_Deportiva ORDER BY nombre`
+    );
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update organizacion deportiva
+router.put('/organizaciones/:cod(\\d+)', async (req, res) => {
+  const { nombre, nombre_formal, tipo_organizacion, disciplina, activo } = req.body;
+  try {
+    await query(
+      `UPDATE pad.Asociacion_Deportiva SET
+         nombre            = @nombre,
+         nombre_formal     = @nombre_formal,
+         tipo_organizacion = @tipo_organizacion,
+         disciplina        = @disciplina,
+         activo            = @activo
+       WHERE cod_asociacion = @cod`,
+      [
+        { name: 'nombre',            type: sql.VarChar(100), value: nombre },
+        { name: 'nombre_formal',     type: sql.VarChar(200), value: nombre_formal || null },
+        { name: 'tipo_organizacion', type: sql.VarChar(20),  value: tipo_organizacion },
+        { name: 'disciplina',        type: sql.VarChar(100), value: disciplina || null },
+        { name: 'activo',            type: sql.Bit,          value: activo ? 1 : 0 },
+        { name: 'cod',               type: sql.SmallInt,     value: parseInt(req.params.cod) },
+      ]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get catalogs needed for forms
 router.get('/catalogos', async (_req, res) => {
   try {

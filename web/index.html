@@ -98,6 +98,74 @@ tr:hover td{background:var(--surface2)}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,16,46,0.1)}
 .form-group textarea{resize:vertical;min-height:60px}
 .form-hint{font-size:11px;color:var(--text3)}
+/* ── SISTEMA DE ANIMACIONES ── */
+:root{--dur-fast:150ms;--dur-mod:240ms;--dur-slow:400ms;--ease-std:cubic-bezier(0.2,0,0,1);--ease-dec:cubic-bezier(0,0,0,1);--ease-spr:cubic-bezier(0.34,1.56,0.64,1)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:1ms!important;transition-duration:1ms!important}}
+/* Stat cards animadas al cargar */
+.stats-grid .stat-card{opacity:0;transform:translateY(10px);animation:cardIn var(--dur-slow) var(--ease-dec) forwards}
+.stats-grid .stat-card:nth-child(1){animation-delay:0ms}.stats-grid .stat-card:nth-child(2){animation-delay:80ms}.stats-grid .stat-card:nth-child(3){animation-delay:160ms}.stats-grid .stat-card:nth-child(4){animation-delay:240ms}
+@keyframes cardIn{to{opacity:1;transform:translateY(0)}}
+/* Stat card hover mejorado */
+.stat-card{transition:box-shadow var(--dur-fast) var(--ease-std),transform var(--dur-fast) var(--ease-std)}
+.stat-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.10);transform:translateY(-2px)}
+/* Nav item: barra indicadora izquierda */
+.nav-item{position:relative;transition:background var(--dur-fast) var(--ease-std),color var(--dur-fast) var(--ease-std)}
+.nav-item::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%) scaleY(0);width:3px;height:60%;background:var(--accent);border-radius:0 2px 2px 0;transition:transform var(--dur-mod) var(--ease-spr)}
+.nav-item.active::before{transform:translateY(-50%) scaleY(1)}
+/* Page transition */
+.page.active{animation:pageIn var(--dur-mod) var(--ease-dec)}
+@keyframes pageIn{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:translateX(0)}}
+/* Module cards spring */
+.module-card{transition:box-shadow var(--dur-mod) var(--ease-spr),transform var(--dur-mod) var(--ease-spr),border-color var(--dur-fast) var(--ease-std)}
+.module-card:hover:not(.disabled){box-shadow:0 12px 32px rgba(0,0,0,.12);transform:translateY(-3px)}
+/* Modal con blur */
+.modal-overlay{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity var(--dur-mod) var(--ease-std)}
+.modal-overlay.show{opacity:1}
+.modal-overlay.closing{opacity:0;pointer-events:none}
+.modal{transform:translateY(14px) scale(.98);opacity:0;transition:transform var(--dur-mod) var(--ease-spr),opacity var(--dur-mod) var(--ease-dec)}
+.modal-overlay.show .modal{transform:translateY(0) scale(1);opacity:1}
+.modal-overlay.closing .modal{transform:translateY(8px) scale(.98);opacity:0;transition:transform var(--dur-fast) var(--ease-std),opacity var(--dur-fast) var(--ease-std)}
+.modal-close{transition:background var(--dur-fast),color var(--dur-fast),transform var(--dur-fast) var(--ease-spr)}
+.modal-close:hover{background:var(--danger-light);color:var(--danger);transform:rotate(90deg)}
+/* API dot pulse */
+.api-dot.online{animation:pulseRing 2s var(--ease-std) infinite}
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}60%{box-shadow:0 0 0 5px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+/* Botón con estado de carga */
+.btn[aria-busy=true]{position:relative;pointer-events:none;color:transparent}
+.btn[aria-busy=true]::after{content:'';position:absolute;inset:50% auto auto 50%;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+.btn-secondary[aria-busy=true]::after{border:2px solid rgba(0,0,0,.15);border-top-color:var(--text)}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Focus visible accesible */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius)}
+.btn:focus-visible{outline-offset:3px}
+/* Skeleton loader */
+.skeleton{background:var(--surface2);border-radius:4px;position:relative;overflow:hidden}
+.skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.6) 50%,transparent 100%);background-size:200% 100%;animation:shimmer 1.6s ease infinite}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+/* Toast */
+#toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
+.toast{display:flex;align-items:flex-start;gap:10px;padding:13px 16px;border-radius:var(--radius-lg);font-size:13px;min-width:260px;max-width:360px;box-shadow:0 8px 24px rgba(0,0,0,.18);pointer-events:all;cursor:pointer;animation:toastIn var(--dur-mod) var(--ease-spr) forwards;position:relative;overflow:hidden}
+.toast.closing{animation:toastOut var(--dur-fast) var(--ease-std) forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(32px) scale(.95)}to{opacity:1;transform:translateX(0) scale(1)}}
+@keyframes toastOut{from{opacity:1;transform:translateX(0) scale(1);max-height:80px;margin-bottom:0}to{opacity:0;transform:translateX(20px) scale(.95);max-height:0;margin-bottom:-8px;padding:0}}
+.toast-success{background:#0F4D38;color:#fff}.toast-error{background:#7f1d1d;color:#fff}.toast-warning{background:#78350f;color:#fff}.toast-info{background:#1e3a5f;color:#fff}
+.toast-icon{font-size:15px;flex-shrink:0;margin-top:1px}.toast-body{flex:1}.toast-title{font-weight:700;margin-bottom:2px;font-size:13px}.toast-msg{font-size:12px;opacity:.85;line-height:1.4}.toast-close{font-size:16px;opacity:.5;flex-shrink:0}.toast-close:hover{opacity:1}
+/* Progress bar en toast */
+.toast::before{content:'';position:absolute;bottom:0;left:0;height:3px;background:rgba(255,255,255,.3);border-radius:0 0 var(--radius-lg) var(--radius-lg);animation:toastProg var(--toast-dur,5s) linear forwards}
+@keyframes toastProg{from{width:100%}to{width:0%}}
+/* Confirm dialog */
+.confirm-box{background:var(--surface);border-radius:var(--radius-lg);padding:28px;max-width:420px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.confirm-box h3{font-size:16px;font-weight:700;margin-bottom:8px}
+.confirm-box p{font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:20px}
+.confirm-actions{display:flex;gap:8px;justify-content:flex-end}
+/* Form row para edicion */
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.edit-grid .full{grid-column:1/-1}
+/* Row hover en tablas */
+tbody tr{transition:background var(--dur-fast) var(--ease-std)}
+/* Btn edit pequeño */
+.btn-edit{background:none;border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:var(--radius);font-size:11px;cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast),border-color var(--dur-fast);font-family:inherit;font-weight:600}
+.btn-edit:hover{background:var(--blue-light);color:var(--blue);border-color:var(--blue)}
 .form-section{margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
 .form-section-title{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .form-section-title .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
@@ -489,10 +557,13 @@ tr:hover td{background:var(--surface2)}
     <!-- ORGANIZACIONES DEPORTIVAS -->
     <div class="page" id="page-orgs">
       <div class="card">
-        <div class="card-header"><h3>Organizaciones Deportivas</h3><span id="orgs-count" style="font-size:12px;color:var(--text3)"></span></div>
+        <div class="card-header">
+          <h3>Organizaciones Deportivas</h3>
+          <span id="orgs-count" style="font-size:12px;color:var(--text3)"></span>
+        </div>
         <table>
-          <thead><tr><th>Cod.</th><th>Nombre</th></tr></thead>
-          <tbody id="t-orgs"><tr><td colspan="2" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr></tbody>
+          <thead><tr><th>Cod.</th><th>Nombre corto</th><th>Nombre formal</th><th>Tipo</th><th>Activo</th><th></th></tr></thead>
+          <tbody id="t-orgs"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -554,6 +625,140 @@ tr:hover td{background:var(--surface2)}
           <thead><tr><th>DNI</th><th>Deportista</th><th>Federacion</th><th>Programa</th><th>Nivel</th><th>Estado</th></tr></thead>
           <tbody id="t-nomina"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- MODAL EDITAR DEPORTISTA -->
+    <div class="modal-overlay" id="modal-edit-dep" style="display:none">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <div>
+            <h2>Editar deportista</h2>
+            <p id="modal-edit-dep-titulo" style="font-size:12px;color:var(--text2);margin-top:2px"></p>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-edit-dep')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="ed-cod">
+          <div class="edit-grid">
+            <div class="form-group full">
+              <label>Tipo y N° de documento</label>
+              <div style="display:flex;gap:8px">
+                <select id="ed-tipo-doc" style="width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+                  <option>DNI</option><option>CE</option><option>PAS</option><option>OTR</option>
+                </select>
+                <input id="ed-doc" type="text" placeholder="Número de documento" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Apellido paterno</label>
+              <input id="ed-ap-pat" type="text" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group">
+              <label>Apellido materno</label>
+              <input id="ed-ap-mat" type="text" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group full">
+              <label>Nombres</label>
+              <input id="ed-nombres" type="text" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group">
+              <label>Sexo</label>
+              <select id="ed-sexo" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+                <option value="M">Masculino</option><option value="F">Femenino</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha de nacimiento</label>
+              <input id="ed-fecha-nac" type="date" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group full">
+              <label>Asociación / Federación</label>
+              <select id="ed-asoc" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;width:100%">
+                <option value="">Seleccionar...</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>N° de cuenta bancaria (Banco de la Nación)</label>
+              <input id="ed-cuenta" type="text" placeholder="Dejar vacío si no tiene cuenta (OPE)" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+              <span class="form-hint">Si no tiene cuenta, dejar en blanco — se marcará como OPE automáticamente</span>
+            </div>
+            <div class="form-group">
+              <label>Correo electrónico</label>
+              <input id="ed-correo" type="email" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input id="ed-telefono" type="text" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group full">
+              <label>Agrupación</label>
+              <input id="ed-agrupacion" type="text" placeholder="Ej: BALA, DISCO..." style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeModal('modal-edit-dep')">Cancelar</button>
+          <button class="btn btn-primary" id="btn-save-dep" onclick="saveEditDep()">&#10003; Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL EDITAR ORGANIZACIÓN -->
+    <div class="modal-overlay" id="modal-edit-org" style="display:none">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <h2>Editar organización deportiva</h2>
+            <p id="modal-edit-org-titulo" style="font-size:12px;color:var(--text2);margin-top:2px"></p>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-edit-org')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="eo-cod">
+          <div class="edit-grid">
+            <div class="form-group full">
+              <label>Nombre corto</label>
+              <input id="eo-nombre" type="text" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group full">
+              <label>Nombre formal</label>
+              <input id="eo-nombre-formal" type="text" placeholder="Nombre oficial completo" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group">
+              <label>Tipo de organización</label>
+              <select id="eo-tipo" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+                <option value="FEDERACION">Federación</option>
+                <option value="ASOCIACION">Asociación</option>
+                <option value="OTRO">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Disciplina</label>
+              <input id="eo-disciplina" type="text" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group full" style="flex-direction:row;align-items:center;gap:10px">
+              <input id="eo-activo" type="checkbox" style="width:16px;height:16px;cursor:pointer">
+              <label for="eo-activo" style="cursor:pointer;font-weight:600">Organización activa</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeModal('modal-edit-org')">Cancelar</button>
+          <button class="btn btn-primary" id="btn-save-org" onclick="saveEditOrg()">&#10003; Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CONFIRMACION (doble confirmacion) -->
+    <div class="modal-overlay" id="modal-confirm" style="display:none">
+      <div class="confirm-box">
+        <h3 id="confirm-titulo">Confirmar acción</h3>
+        <p id="confirm-msg">¿Estás seguro?</p>
+        <div class="confirm-actions">
+          <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">Cancelar</button>
+          <button class="btn btn-primary" id="btn-confirm-ok" onclick="document.getElementById('btn-confirm-ok')._handler && (closeModal('modal-confirm'), document.getElementById('btn-confirm-ok')._handler())">Confirmar</button>
+        </div>
       </div>
     </div>
 
@@ -890,6 +1095,50 @@ async function apiPost(path, body) {
   if (!r.ok) throw new Error(j.error || 'Error');
   return j;
 }
+async function apiPut(path, body) {
+  const r = await fetch(API + path, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Error');
+  return j;
+}
+
+// ── TOAST SYSTEM ──
+function toast(msg, tipo = 'success', titulo = null, dur = 5000) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+  const el = document.createElement('div');
+  el.className = `toast toast-${tipo}`;
+  el.style.setProperty('--toast-dur', dur + 'ms');
+  el.innerHTML = `
+    <span class="toast-icon">${icons[tipo]||'ℹ'}</span>
+    <div class="toast-body">
+      ${titulo ? `<div class="toast-title">${titulo}</div>` : ''}
+      <div class="toast-msg">${msg}</div>
+    </div>
+    <span class="toast-close">×</span>`;
+  const dismiss = () => {
+    el.classList.add('closing');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  };
+  el.addEventListener('click', dismiss);
+  container.appendChild(el);
+  if (dur > 0) setTimeout(dismiss, dur);
+  return el;
+}
+
+// ── CONFIRM DIALOG ──
+function showConfirm(titulo, mensaje, onConfirm) {
+  const overlay = document.getElementById('modal-confirm');
+  document.getElementById('confirm-titulo').textContent = titulo;
+  document.getElementById('confirm-msg').innerHTML = mensaje;
+  document.getElementById('btn-confirm-ok')._handler = onConfirm;
+  openModal('modal-confirm');
+}
 async function staticJson(f) {
   // Try OneDrive first (requires MSAL auth), then fall back to local static file
   const od = await oneDriveJson(f);
@@ -960,6 +1209,18 @@ async function loadDep() {
   try { d = online ? await apiGet('/api/reportes/activos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { d = null; }
   depData = d || [];
   renderDep(depData);
+  // Poblar select de asociaciones en modal de edición
+  if (cats.asociaciones && cats.asociaciones.length) {
+    const sel = document.getElementById('ed-asoc');
+    if (sel && sel.options.length <= 1) {
+      cats.asociaciones.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.cod_asociacion;
+        opt.textContent = a.nombre;
+        sel.appendChild(opt);
+      });
+    }
+  }
 }
 
 function renderDep(data) {
@@ -973,7 +1234,7 @@ function renderDep(data) {
     <td><span class="badge badge-${(r.cod_tipo_pad||'').toLowerCase()}">${(r.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td>
     <td>${r.nivel_desc||r.cod_nivel||'—'}</td>
     <td><span class="badge badge-${(r.cod_estado_pad||'act').toLowerCase()}">${r.cod_estado_pad||'ACT'}</span></td>
-    <td><button class="btn btn-ghost btn-sm" onclick="verDep('${r.num_documento}')">Ver</button></td></tr>`).join('');
+    <td><button class="btn-edit" onclick="verDep(${r.cod_deportista||0})">&#9998; Editar</button></td></tr>`).join('');
 }
 
 function filterDep() {
@@ -987,13 +1248,27 @@ function filterDep() {
   }));
 }
 
-function verDep(dni) {
+function verDep(cod) {
   if (!online) return;
-  apiGet('/api/deportistas/buscar?dni=' + encodeURIComponent(dni)).then(data => {
-    if (!data.found) return;
-    const d = data.deportista;
-    alert(d.ap_paterno+' '+d.ap_materno+', '+d.nombres+'\nDNI: '+d.num_documento+'\nCuenta: '+(d.num_cuenta||'Sin cuenta (OPE)'));
-  });
+  apiGet('/api/deportistas/' + cod).then(d => {
+    if (!d) return;
+    document.getElementById('ed-cod').value       = d.cod_deportista;
+    document.getElementById('ed-doc').value        = d.num_documento || '';
+    document.getElementById('ed-tipo-doc').value   = d.tipo_documento || 'DNI';
+    document.getElementById('ed-ap-pat').value     = d.ap_paterno || '';
+    document.getElementById('ed-ap-mat').value     = d.ap_materno || '';
+    document.getElementById('ed-nombres').value    = d.nombres || '';
+    document.getElementById('ed-sexo').value       = d.sexo || 'M';
+    document.getElementById('ed-fecha-nac').value  = d.fecha_nac ? d.fecha_nac.slice(0,10) : '';
+    document.getElementById('ed-asoc').value       = d.cod_asociacion || '';
+    document.getElementById('ed-cuenta').value     = d.num_cuenta || '';
+    document.getElementById('ed-correo').value     = d.correo || '';
+    document.getElementById('ed-telefono').value   = d.telefono || '';
+    document.getElementById('ed-agrupacion').value = d.agrupacion || '';
+    document.getElementById('modal-edit-dep-titulo').textContent =
+      d.ap_paterno + ' ' + d.ap_materno + ', ' + d.nombres;
+    openModal('modal-edit-dep');
+  }).catch(e => toast(e.message, 'error'));
 }
 
 // ── CAMBIOS PAD — PERIODOS ─────────────────────────────────
@@ -1289,6 +1564,111 @@ function descargarGiro() {
   window.open(`${API}/api/excel/giro?tipo=${tipo}&periodo=${periodo}`, '_blank');
 }
 
+// ── ORGANIZACIONES ──────────────────────────────────────────
+async function loadOrgs() {
+  const tbody = document.getElementById('t-orgs');
+  if (!tbody) return;
+  try {
+    const data = online
+      ? await apiGet('/api/deportistas/organizaciones/lista')
+      : (await staticJson('asociaciones.json')) || [];
+    document.getElementById('orgs-count').textContent = data.length + ' organizaciones';
+    tbody.innerHTML = data.map(o => `<tr>
+      <td class="mono">${o.cod_asociacion}</td>
+      <td><strong>${o.nombre}</strong></td>
+      <td style="font-size:12px;color:var(--text2)">${o.nombre_formal||'—'}</td>
+      <td><span class="badge" style="background:var(--blue-light);color:var(--blue)">${o.tipo_organizacion||'—'}</span></td>
+      <td>${o.activo ? '<span class="badge badge-act">Activo</span>' : '<span class="badge badge-ret">Inactivo</span>'}</td>
+      <td>${online ? `<button class="btn-edit" onclick="editOrg(${o.cod_asociacion})">&#9998; Editar</button>` : ''}</td>
+    </tr>`).join('');
+  } catch(e) { toast('Error cargando organizaciones: '+e.message, 'error'); }
+}
+
+function editOrg(cod) {
+  apiGet('/api/deportistas/organizaciones/lista').then(data => {
+    const o = data.find(x => x.cod_asociacion === cod);
+    if (!o) return;
+    document.getElementById('eo-cod').value          = o.cod_asociacion;
+    document.getElementById('eo-nombre').value       = o.nombre || '';
+    document.getElementById('eo-nombre-formal').value= o.nombre_formal || '';
+    document.getElementById('eo-tipo').value         = o.tipo_organizacion || 'FEDERACION';
+    document.getElementById('eo-disciplina').value   = o.disciplina || '';
+    document.getElementById('eo-activo').checked     = !!o.activo;
+    document.getElementById('modal-edit-org-titulo').textContent = o.nombre;
+    openModal('modal-edit-org');
+  }).catch(e => toast(e.message, 'error'));
+}
+
+async function saveEditOrg() {
+  const cod = document.getElementById('eo-cod').value;
+  const body = {
+    nombre:            document.getElementById('eo-nombre').value.trim(),
+    nombre_formal:     document.getElementById('eo-nombre-formal').value.trim() || null,
+    tipo_organizacion: document.getElementById('eo-tipo').value,
+    disciplina:        document.getElementById('eo-disciplina').value.trim() || null,
+    activo:            document.getElementById('eo-activo').checked,
+  };
+  // Doble confirmación
+  showConfirm(
+    'Confirmar edición de organización',
+    `¿Guardar los cambios en <strong>${body.nombre}</strong>? Esta acción actualiza los datos en la base de datos.`,
+    async () => {
+      const btn = document.getElementById('btn-save-org');
+      btn.setAttribute('aria-busy','true');
+      try {
+        await apiPut('/api/deportistas/organizaciones/' + cod, body);
+        closeModal('modal-edit-org');
+        toast('Organización actualizada correctamente', 'success');
+        await loadOrgs();
+      } catch(e) {
+        toast('Error al guardar: ' + e.message, 'error');
+      } finally {
+        btn.removeAttribute('aria-busy');
+      }
+    }
+  );
+}
+
+async function saveEditDep() {
+  const cod = document.getElementById('ed-cod').value;
+  const nombre = document.getElementById('ed-ap-pat').value.trim() + ' ' +
+                 document.getElementById('ed-ap-mat').value.trim() + ', ' +
+                 document.getElementById('ed-nombres').value.trim();
+  const body = {
+    num_documento:  document.getElementById('ed-doc').value.trim(),
+    tipo_documento: document.getElementById('ed-tipo-doc').value,
+    ap_paterno:     document.getElementById('ed-ap-pat').value.trim(),
+    ap_materno:     document.getElementById('ed-ap-mat').value.trim(),
+    nombres:        document.getElementById('ed-nombres').value.trim(),
+    sexo:           document.getElementById('ed-sexo').value,
+    fecha_nac:      document.getElementById('ed-fecha-nac').value,
+    cod_asociacion: parseInt(document.getElementById('ed-asoc').value),
+    num_cuenta:     document.getElementById('ed-cuenta').value.trim() || null,
+    correo:         document.getElementById('ed-correo').value.trim() || null,
+    telefono:       document.getElementById('ed-telefono').value.trim() || null,
+    agrupacion:     document.getElementById('ed-agrupacion').value.trim() || null,
+  };
+  // Doble confirmación
+  showConfirm(
+    'Confirmar edición de deportista',
+    `¿Guardar los cambios en <strong>${nombre}</strong>?<br><small style="color:var(--text3)">Se actualizarán todos los datos personales, número de cuenta y asociación.</small>`,
+    async () => {
+      const btn = document.getElementById('btn-save-dep');
+      btn.setAttribute('aria-busy','true');
+      try {
+        await apiPut('/api/deportistas/' + cod, body);
+        closeModal('modal-edit-dep');
+        toast('Deportista actualizado correctamente', 'success', nombre);
+        await loadDep();
+      } catch(e) {
+        toast('Error al guardar: ' + e.message, 'error');
+      } finally {
+        btn.removeAttribute('aria-busy');
+      }
+    }
+  );
+}
+
 // ── CATALOGOS ──────────────────────────────────────────────
 async function loadCats() {
   if (!online) return;
@@ -1522,8 +1902,27 @@ function showAlert(id, type, msg) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
 }
-function openModal(id) { document.getElementById(id)?.classList.add('show'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'flex';
+  el.offsetHeight; // force reflow
+  el.classList.add('show');
+  el.classList.remove('closing');
+  el._esc = e => { if (e.key === 'Escape') closeModal(id); };
+  document.addEventListener('keydown', el._esc);
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('closing');
+  el.classList.remove('show');
+  document.removeEventListener('keydown', el._esc);
+  el.addEventListener('transitionend', () => {
+    el.style.display = 'none';
+    el.classList.remove('closing');
+  }, { once: true });
+}
 function switchTab(el, tabId) {
   el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
@@ -1608,6 +2007,7 @@ function showPage(id, el) {
   if (id==='nomina') loadNomina();
   if (id==='cambios') { volverAPeriodos && (periodoDetalle=null); document.getElementById('cambios-periodos-view').style.display='block'; document.getElementById('cambios-detalle-view').style.display='none'; loadCambios(); }
   if (id==='catalogos'||id==='orgs') loadCats();
+  if (id === 'orgs') loadOrgs();
   if (id==='home') loadHomeModule();
 }
 
