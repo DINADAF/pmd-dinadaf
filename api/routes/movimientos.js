@@ -169,4 +169,102 @@ router.get('/recientes', async (req, res) => {
   }
 });
 
+// GET /api/movimientos/periodos — list all periods with counts and status
+router.get('/periodos', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT
+         c.periodo_vigencia AS periodo,
+         COUNT(*) AS cantidad_registros,
+         ISNULL(p.cerrado, 0) AS cerrado,
+         p.fecha_cierre,
+         p.usuario_cierre,
+         p.notas
+       FROM pad.cambios_PAD c
+       LEFT JOIN pad.periodos_cambios p ON p.periodo = c.periodo_vigencia
+       WHERE c.periodo_vigencia IS NOT NULL
+       GROUP BY c.periodo_vigencia, p.cerrado, p.fecha_cierre, p.usuario_cierre, p.notas
+       ORDER BY c.periodo_vigencia DESC`,
+      []
+    );
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/movimientos/periodo/:periodo — all changes for a specific period
+router.get('/periodo/:periodo', async (req, res) => {
+  const { periodo } = req.params;
+  try {
+    const result = await query(
+      `SELECT
+         c.cod_cambio,
+         c.cod_tip_mov,
+         c.nro_informe,
+         c.periodo_vigencia,
+         c.motivo,
+         c.nivel_anterior,
+         c.nivel_nuevo,
+         c.fecha_informe AS fecha_cambio,
+         d.ap_paterno + ' ' + d.ap_materno + ', ' + d.nombres AS deportista,
+         d.num_documento,
+         p.cod_tipo_pad,
+         p.cod_nivel,
+         a.nombre AS asociacion,
+         (SELECT STRING_AGG(e.nro_expediente, ' / ')
+          FROM pad.expedientes_cambio e WHERE e.cod_cambio = c.cod_cambio) AS expedientes
+       FROM pad.cambios_PAD c
+       JOIN pad.PAD p ON c.cod_pad = p.cod_pad
+       JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
+       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
+       WHERE c.periodo_vigencia = @periodo
+       ORDER BY c.cod_cambio ASC`,
+      [{ name: 'periodo', type: sql.VarChar(6), value: periodo }]
+    );
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/movimientos/periodos/:periodo/cerrar — close a period
+router.post('/periodos/:periodo/cerrar', async (req, res) => {
+  const { periodo } = req.params;
+  const { usuario, notas } = req.body;
+  try {
+    const pool = await getPool();
+    await pool.request()
+      .input('periodo', sql.VarChar(6), periodo)
+      .input('usuario', sql.VarChar(100), usuario || 'sistema')
+      .input('notas', sql.VarChar(500), notas || null)
+      .query(`MERGE pad.periodos_cambios AS target
+              USING (SELECT @periodo AS periodo) AS source ON target.periodo = source.periodo
+              WHEN MATCHED THEN
+                UPDATE SET cerrado=1, fecha_cierre=GETDATE(), usuario_cierre=@usuario, notas=@notas
+              WHEN NOT MATCHED THEN
+                INSERT (periodo, cerrado, fecha_cierre, usuario_cierre, notas)
+                VALUES (@periodo, 1, GETDATE(), @usuario, @notas);`);
+    res.json({ ok: true, periodo, cerrado: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/movimientos/periodos/:periodo/reabrir — reopen a closed period
+router.post('/periodos/:periodo/reabrir', async (req, res) => {
+  const { periodo } = req.params;
+  try {
+    const pool = await getPool();
+    await pool.request()
+      .input('periodo', sql.VarChar(6), periodo)
+      .query(`UPDATE pad.periodos_cambios
+              SET cerrado=0, fecha_cierre=NULL, usuario_cierre=NULL
+              WHERE periodo=@periodo`);
+    res.json({ ok: true, periodo, cerrado: false });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
