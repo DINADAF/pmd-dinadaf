@@ -21,9 +21,10 @@ sql/__pycache__/
 Thumbs.db
 desktop.ini
 
-# Exported data (goes to SharePoint, not git)
+# Exported data CSVs (go to SharePoint)
 web/data/*.csv
-web/data/*.json
+# JSON exports ARE committed so GitHub Pages always shows data
+# web/data/*.json
 
 # Logs
 *.log

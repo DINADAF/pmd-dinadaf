@@ -1,373 +1,884 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PAD — Sistema de Gestión | DINADAF · IPD</title>
-  <link rel="stylesheet" href="css/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema PAD - DINADAF/IPD</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#F7F6F3;--surface:#FFFFFF;--surface2:#F0EFEC;--border:#E2E0DB;
+--text:#1A1A18;--text2:#6B6A66;--text3:#9C9B97;
+--accent:#1D6B4F;--accent-light:#E8F5EE;--accent-dark:#0F4D38;
+--coral:#D85A30;--coral-light:#FFF0EB;
+--blue:#2563EB;--blue-light:#EFF6FF;
+--amber:#B8860B;--amber-light:#FFF8E1;
+--purple:#6C5CE7;--purple-light:#F0EEFF;
+--danger:#DC2626;--danger-light:#FEF2F2;
+--radius:8px;--radius-lg:12px;
+--shadow:0 1px 3px rgba(0,0,0,0.06);
+--shadow-lg:0 4px 16px rgba(0,0,0,0.08);
+--transition:0.2s cubic-bezier(0.4,0,0.2,1);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow-x:hidden}
+.sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:#0F2B1F;color:#fff;display:flex;flex-direction:column;z-index:100}
+.sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-header h1{font-size:15px;font-weight:700;letter-spacing:-0.3px}
+.sidebar-header p{font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px}
+.sidebar-nav{flex:1;padding:12px;overflow-y:auto}
+.nav-section{margin-bottom:16px}
+.nav-section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,0.35);padding:8px 12px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;transition:var(--transition);font-size:13px;color:rgba(255,255,255,0.65);font-weight:500}
+.nav-item:hover{background:rgba(255,255,255,0.08);color:#fff}
+.nav-item.active{background:rgba(255,255,255,0.12);color:#fff}
+.nav-icon{width:18px;font-size:14px;display:flex;align-items:center;justify-content:center}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.35)}
+.api-status{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.api-dot{width:7px;height:7px;border-radius:50%;background:#6B6A66;flex-shrink:0}
+.api-dot.online{background:#22C55E;box-shadow:0 0 6px rgba(34,197,94,0.5)}
+.main{margin-left:240px;min-height:100vh}
+.offline-bar{background:#7f1d1d;color:#fca5a5;font-size:12px;padding:8px 28px;display:none}
+.offline-bar.show{display:block}
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:16px;font-weight:600;letter-spacing:-0.3px}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.content{padding:28px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;transition:var(--transition);border:none;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-dark)}.btn-primary:disabled{background:#9C9B97;cursor:not-allowed}
+.btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--surface2)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-ghost{background:none;color:var(--text2);border:none;padding:6px 10px;cursor:pointer}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:var(--transition)}
+.stat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.stat-label{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:4px}
+.stat-value{font-size:28px;font-weight:700;letter-spacing:-1px;font-family:'JetBrains Mono',monospace}
+.stat-sub{font-size:11px;margin-top:4px;color:var(--text3);font-weight:500}
+.stat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.card-header h3{font-size:14px;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);font-weight:600;background:var(--surface2);border-bottom:1px solid var(--border)}
+td{padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-act{background:var(--accent-light);color:var(--accent)}
+.badge-les{background:var(--amber-light);color:var(--amber)}
+.badge-lss{background:var(--coral-light);color:var(--coral)}
+.badge-ret{background:var(--danger-light);color:var(--danger)}
+.badge-ing{background:var(--accent-light);color:var(--accent)}
+.badge-cambniv,.badge-camb{background:var(--blue-light);color:var(--blue)}
+.badge-retiro{background:var(--danger-light);color:var(--danger)}
+.badge-pad1{background:var(--blue-light);color:var(--blue)}
+.badge-pad2{background:var(--purple-light);color:var(--purple)}
+.badge-pnm{background:var(--amber-light);color:var(--amber)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);width:90%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,0.15);animation:mIn .2s ease-out}
+.modal-lg{max-width:900px}
+@keyframes mIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
+.modal-header h2{font-size:16px;font-weight:700}
+.modal-close{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius);cursor:pointer;font-size:18px;color:var(--text2);border:none;background:none}
+.modal-close:hover{background:var(--surface2)}
+.modal-body{padding:24px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface2)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:12px;font-weight:600;color:var(--text2)}
+.form-group input,.form-group select,.form-group textarea{padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);transition:var(--transition)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,107,79,0.1)}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-hint{font-size:11px;color:var(--text3)}
+.form-section{margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
+.form-section-title{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.form-section-title .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition)}
+.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}.tab-content.active{display:block}
+.search-bar{display:flex;gap:8px;margin-bottom:20px}
+.search-input{flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)}
+.search-input:focus{outline:none;border-color:var(--accent)}
+.filter-pills{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:var(--transition)}
+.pill:hover,.pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.alert{padding:12px 16px;border-radius:var(--radius);font-size:13px;display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
+.alert-warning{background:var(--amber-light);color:var(--amber);border:1px solid #E8D5A0}
+.alert-info{background:var(--blue-light);color:var(--blue);border:1px solid #BFDBFE}
+.alert-danger{background:var(--danger-light);color:var(--danger);border:1px solid #FECACA}
+.alert-success{background:var(--accent-light);color:var(--accent);border:1px solid #BBF7D0}
+.page{display:none}.page.active{display:block}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state-icon{font-size:40px;margin-bottom:12px;opacity:0.4}
+.found-box{background:var(--accent-light);border:1px solid var(--accent);border-radius:var(--radius);padding:10px 14px;margin-top:8px;font-size:13px;display:none}
+.found-box.show{display:block}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+</style>
 </head>
 <body>
-  <!-- HEADER -->
-  <header class="header">
-    <div class="header-inner">
-      <div class="header-brand">
-        <div class="header-logo">IPD</div>
-        <div>
-          <div class="header-title">Sistema PAD</div>
-          <div class="header-subtitle">DINADAF — Programa de Apoyo al Deportista</div>
-        </div>
-      </div>
-      <div class="header-status">
-        <span id="api-indicator" class="status-dot offline"></span>
-        <span id="api-label" class="status-label">Módulo de gestión offline</span>
-      </div>
-    </div>
-  </header>
 
-  <!-- NAV TABS -->
-  <nav class="tab-nav">
-    <div class="tab-nav-inner">
-      <button class="tab-btn active" data-tab="dashboard">Reportería</button>
-      <button class="tab-btn" id="tab-gestion-btn" data-tab="gestion">Gestión PAD</button>
-      <button class="tab-btn" id="tab-cuenta-btn" data-tab="cuenta">Número de Cuenta</button>
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>Sistema PAD</h1>
+    <p>DINADAF / IPD</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Principal</div>
+      <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">&#9632;</span>Dashboard</div>
+      <div class="nav-item" onclick="showPage('deportistas',this)"><span class="nav-icon">&#9679;</span>Deportistas</div>
+      <div class="nav-item" id="nav-cambios" onclick="showPage('cambios',this)"><span class="nav-icon">&#9654;</span>Cambios PAD</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Reportes</div>
+      <div class="nav-item" onclick="showPage('consolidados',this)"><span class="nav-icon">&#9744;</span>Consolidados</div>
+      <div class="nav-item" onclick="showPage('giros',this)"><span class="nav-icon">&#9745;</span>Giros</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Configuracion</div>
+      <div class="nav-item" onclick="showPage('catalogos',this)"><span class="nav-icon">&#9881;</span>Catalogos</div>
+      <div class="nav-item" onclick="showPage('montos',this)"><span class="nav-icon">&#9830;</span>Montos</div>
     </div>
   </nav>
+  <div class="sidebar-footer">
+    <div class="api-status"><span class="api-dot" id="api-dot"></span><span id="api-txt">Verificando...</span></div>
+    v1.0 &middot; Directiva 003-2025
+  </div>
+</div>
 
-  <main class="main">
-
-    <!-- ═══════════════════════════════════════════
-         TAB 1 — DASHBOARD (always visible)
-    ══════════════════════════════════════════════ -->
-    <section id="tab-dashboard" class="tab-content active">
-      <div class="section-header">
-        <h2>Resumen PAD <span id="periodo-actual" class="badge-periodo"></span></h2>
-        <span id="last-update" class="text-muted small"></span>
-      </div>
-
-      <!-- KPI Cards -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-label">PAD I Activos</div>
-          <div id="kpi-pad1" class="kpi-value">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">PAD II Activos</div>
-          <div id="kpi-pad2" class="kpi-value">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">PNM Activos</div>
-          <div id="kpi-pnm" class="kpi-value">—</div>
-        </div>
-        <div class="kpi-card kpi-total">
-          <div class="kpi-label">Total Activos</div>
-          <div id="kpi-total" class="kpi-value">—</div>
-        </div>
-        <div class="kpi-card kpi-alert">
-          <div class="kpi-label">En LES (lesionados)</div>
-          <div id="kpi-les" class="kpi-value">—</div>
-        </div>
-      </div>
-
-      <!-- Activos table -->
-      <div class="card mt-4">
-        <div class="card-header">
-          <h3>Deportistas Activos</h3>
-          <span id="activos-count" class="text-muted small"></span>
-        </div>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Deportista</th>
-                <th>DNI</th>
-                <th>Tipo</th>
-                <th>Nivel</th>
-                <th>Asociación</th>
-                <th class="text-right">Monto S/</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-activos-body">
-              <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Movimientos recientes -->
-      <div class="card mt-4">
-        <div class="card-header">
-          <h3>Últimos Movimientos</h3>
-        </div>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Deportista</th>
-                <th>PAD</th>
-                <th>Nivel</th>
-                <th>Nro. Informe</th>
-                <th>Período</th>
-                <th>Fecha</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-movimientos-body">
-              <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════
-         TAB 2 — GESTIÓN PAD (requires local API)
-    ══════════════════════════════════════════════ -->
-    <section id="tab-gestion" class="tab-content">
-      <!-- Offline message -->
-      <div id="gestion-offline" class="offline-msg">
-        <div class="offline-icon">🔒</div>
-        <h3>Módulo de gestión no disponible</h3>
-        <p>Este módulo requiere que el servidor local esté activo en la PC de administración.</p>
-        <p class="text-muted small">Si eres el administrador, inicia el servidor con: <code>npm start</code> en la carpeta <code>api/</code></p>
-      </div>
-
-      <!-- Online: Cambios PAD form -->
-      <div id="gestion-online" class="hidden">
-        <div class="section-header">
-          <h2>Registro de Cambios PAD</h2>
-          <button id="btn-exportar" class="btn btn-secondary">Exportar datos</button>
-        </div>
-
-        <div class="card">
-          <div class="card-body">
-
-            <!-- Step 1: Movement type -->
-            <div class="form-section">
-              <label class="form-label">Tipo de movimiento</label>
-              <div class="btn-group" id="tipo-mov-group">
-                <button class="mov-btn active" data-tipo="ING">Ingreso</button>
-                <button class="mov-btn" data-tipo="CAMBNIV">Cambio de Nivel</button>
-                <button class="mov-btn" data-tipo="RET">Retiro</button>
-              </div>
-            </div>
-
-            <!-- Step 2: Athlete search -->
-            <div class="form-section">
-              <label class="form-label">DNI del deportista</label>
-              <div class="input-group">
-                <input type="text" id="input-dni" class="form-input" placeholder="Ingrese DNI" maxlength="12" />
-                <button id="btn-buscar" class="btn btn-primary">Buscar</button>
-              </div>
-              <div id="deportista-info" class="deportista-card hidden"></div>
-            </div>
-
-            <!-- Step 3: PAD details -->
-            <div id="form-pad-details" class="hidden">
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Tipo PAD</label>
-                  <select id="sel-tipo-pad" class="form-input">
-                    <option value="PAD1">PAD I</option>
-                    <option value="PAD2">PAD II</option>
-                    <option value="PNM">PNM</option>
-                  </select>
-                </div>
-                <div class="form-group" id="grupo-nivel">
-                  <label class="form-label">Nivel</label>
-                  <select id="sel-nivel" class="form-input"></select>
-                </div>
-                <div class="form-group hidden" id="grupo-nivel-anterior">
-                  <label class="form-label">Nivel anterior</label>
-                  <select id="sel-nivel-anterior" class="form-input"></select>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Nro. Informe</label>
-                  <input type="text" id="input-informe" class="form-input" placeholder="Ej: Memorando N° 000284-2025-DINADAF" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Período vigencia</label>
-                  <input type="text" id="input-periodo" class="form-input" placeholder="YYYYMM" maxlength="6" />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Motivo</label>
-                <input type="text" id="input-motivo" class="form-input" placeholder="Motivo del movimiento" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Detalle del evento</label>
-                <textarea id="input-detalle" class="form-input" rows="2" placeholder="Descripción del evento deportivo o causal"></textarea>
-              </div>
-
-              <!-- Expedientes -->
-              <div class="form-section">
-                <label class="form-label">Expedientes</label>
-                <div id="expedientes-list">
-                  <div class="expediente-row">
-                    <select class="form-input exp-tipo" style="width:160px">
-                      <option value="INFORME">Informe</option>
-                      <option value="EXPEDIENTE" selected>Expediente</option>
-                      <option value="OFICIO">Oficio</option>
-                      <option value="RESOLUCION">Resolución</option>
-                      <option value="OTRO">Otro</option>
-                    </select>
-                    <input type="text" class="form-input exp-nro" placeholder="Nro. expediente" />
-                    <button class="btn btn-icon btn-remove-exp" title="Quitar">✕</button>
-                  </div>
-                </div>
-                <button id="btn-add-exp" class="btn btn-link mt-1">+ Agregar expediente</button>
-              </div>
-
-              <div class="form-actions">
-                <button id="btn-guardar" class="btn btn-primary btn-lg">Guardar movimiento</button>
-                <button id="btn-limpiar" class="btn btn-ghost">Limpiar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent movements in this session -->
-        <div class="card mt-4">
-          <div class="card-header"><h3>Movimientos registrados hoy</h3></div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr><th>Tipo</th><th>Deportista</th><th>PAD</th><th>Nivel</th><th>Informe</th><th>Estado</th></tr>
-              </thead>
-              <tbody id="tabla-session-body">
-                <tr><td colspan="6" class="text-center text-muted">Ningún movimiento registrado en esta sesión</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════
-         TAB 3 — NÚMERO DE CUENTA
-    ══════════════════════════════════════════════ -->
-    <section id="tab-cuenta" class="tab-content">
-      <div id="cuenta-offline" class="offline-msg">
-        <div class="offline-icon">🔒</div>
-        <h3>Módulo no disponible</h3>
-        <p>Requiere servidor local activo.</p>
-      </div>
-      <div id="cuenta-online" class="hidden">
-        <div class="section-header"><h2>Actualización de Número de Cuenta</h2></div>
-        <div class="card" style="max-width:520px">
-          <div class="card-body">
-            <div class="form-group">
-              <label class="form-label">DNI del deportista</label>
-              <div class="input-group">
-                <input type="text" id="cuenta-dni" class="form-input" placeholder="Ingrese DNI" maxlength="12" />
-                <button id="btn-buscar-cuenta" class="btn btn-primary">Buscar</button>
-              </div>
-            </div>
-            <div id="cuenta-deportista-info" class="deportista-card hidden"></div>
-            <div id="form-cuenta" class="hidden">
-              <div class="form-group">
-                <label class="form-label">Tipo de giro</label>
-                <div class="btn-group">
-                  <button class="giro-btn active" data-giro="CUENTA">Número de cuenta</button>
-                  <button class="giro-btn" data-giro="OPE">OPE (por DNI)</button>
-                </div>
-              </div>
-              <div id="grupo-num-cuenta" class="form-group">
-                <label class="form-label">Número de cuenta Banco de la Nación</label>
-                <input type="text" id="input-num-cuenta" class="form-input" placeholder="Número de cuenta" />
-              </div>
-              <div class="form-actions">
-                <button id="btn-guardar-cuenta" class="btn btn-primary">Actualizar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- MODAL: Nuevo deportista -->
-  <div id="modal-deportista" class="modal hidden">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3>Registrar nuevo deportista</h3>
-        <button class="modal-close">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Ap. Paterno *</label>
-            <input type="text" id="new-ap-paterno" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Ap. Materno *</label>
-            <input type="text" id="new-ap-materno" class="form-input" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Nombres *</label>
-          <input type="text" id="new-nombres" class="form-input" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Tipo doc.</label>
-            <select id="new-tipo-doc" class="form-input">
-              <option value="DNI">DNI</option>
-              <option value="CE">CE</option>
-              <option value="PAS">Pasaporte</option>
-              <option value="OTR">Otro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Nro. documento *</label>
-            <input type="text" id="new-num-doc" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Sexo *</label>
-            <select id="new-sexo" class="form-input">
-              <option value="M">Masculino</option>
-              <option value="F">Femenino</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Fecha nacimiento *</label>
-            <input type="date" id="new-fecha-nac" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Asociación *</label>
-            <select id="new-asociacion" class="form-input"></select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Correo</label>
-            <input type="email" id="new-correo" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Teléfono</label>
-            <input type="text" id="new-telefono" class="form-input" />
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="btn-crear-deportista" class="btn btn-primary">Crear deportista</button>
-        <button class="btn btn-ghost modal-close-btn">Cancelar</button>
-      </div>
+<div class="main">
+  <div class="offline-bar" id="offline-bar">&#9888; Modulo de gestion no disponible &mdash; API local inactiva. Solo visualizacion de datos exportados.</div>
+  <div class="topbar">
+    <span class="topbar-title" id="page-title">Dashboard</span>
+    <div class="topbar-right">
+      <span id="last-update" style="font-size:11px;color:var(--text3)"></span>
+      <button class="btn btn-secondary btn-sm" id="btn-export" onclick="doExport()" style="display:none">&#8593; Exportar datos</button>
+      <button class="btn btn-primary" id="btn-nuevo" onclick="openModal('modal-cambio')" style="display:none">+ Nuevo cambio PAD</button>
     </div>
   </div>
 
-  <!-- TOAST notifications -->
-  <div id="toast-container"></div>
+  <div class="content">
 
-  <script type="module" src="js/app.js"></script>
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label"><span class="stat-dot" style="background:var(--accent)"></span>Deportistas activos</div>
+          <div class="stat-value" id="k-total">—</div>
+          <div class="stat-sub">PAD I: <span id="k-p1">—</span> &middot; PAD II: <span id="k-p2">—</span> &middot; PNM: <span id="k-pnm">—</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><span class="stat-dot" style="background:var(--blue)"></span>Monto mensual</div>
+          <div class="stat-value" id="k-monto">—</div>
+          <div class="stat-sub" id="k-periodo">Periodo actual</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><span class="stat-dot" style="background:var(--coral)"></span>Ultimos movimientos</div>
+          <div class="stat-value" id="k-mov">—</div>
+          <div class="stat-sub" id="k-mov-sub">&nbsp;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><span class="stat-dot" style="background:var(--amber)"></span>En estado LES</div>
+          <div class="stat-value" id="k-les">—</div>
+          <div class="stat-sub">Lesionados activos</div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3>Ultimos movimientos</h3></div>
+          <table>
+            <thead><tr><th>Deportista</th><th>Tipo</th><th>Programa</th><th>Periodo</th></tr></thead>
+            <tbody id="t-movimientos"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Resumen por programa y nivel</h3></div>
+          <table>
+            <thead><tr><th>Programa</th><th>Nivel</th><th>Cantidad</th><th>Monto total</th></tr></thead>
+            <tbody id="t-resumen"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEPORTISTAS -->
+    <div class="page" id="page-deportistas">
+      <div class="search-bar">
+        <input class="search-input" id="q-dep" placeholder="Buscar por nombre, DNI o federacion..." oninput="filterDep()">
+        <button class="btn btn-secondary" id="btn-nuevo-dep" onclick="openModal('modal-deportista')" style="display:none">+ Nuevo deportista</button>
+      </div>
+      <div class="filter-pills" id="pills-dep">
+        <span class="pill active" data-f="">Todos</span>
+        <span class="pill" data-f="PAD1">PAD I</span>
+        <span class="pill" data-f="PAD2">PAD II</span>
+        <span class="pill" data-f="PNM">PNM</span>
+        <span class="pill" data-f="ACT">Activos</span>
+        <span class="pill" data-f="RET">Retirados</span>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Deportistas <span id="dep-count" style="font-weight:400;color:var(--text3);font-size:12px"></span></h3></div>
+        <table>
+          <thead><tr><th>DNI</th><th>Deportista</th><th>Federacion</th><th>Programa</th><th>Nivel</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="t-dep"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CAMBIOS PAD -->
+    <div class="page" id="page-cambios">
+      <div id="cambios-offline-msg" class="alert alert-danger" style="display:none">&#9888; API local no disponible. Active el servidor para registrar cambios.</div>
+      <div id="cambios-main">
+        <div class="search-bar">
+          <input class="search-input" placeholder="Buscar por deportista o expediente...">
+          <select id="sel-per-cambios" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
+            <option value="">Todos los periodos</option>
+          </select>
+          <button class="btn btn-primary" onclick="openModal('modal-cambio')">+ Nuevo cambio</button>
+        </div>
+        <div class="filter-pills">
+          <span class="pill active">Todos</span><span class="pill">Ingresos</span><span class="pill">Cambios de nivel</span><span class="pill">Retiros</span>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Periodo</th><th>Tipo</th><th>Deportista</th><th>Programa</th><th>Nivel</th><th>Expediente</th><th>Informe</th></tr></thead>
+            <tbody id="t-cambios"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSOLIDADOS -->
+    <div class="page" id="page-consolidados">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-tec')">Tecnico</div>
+        <div class="tab" onclick="switchTab(this,'tab-eco')">Economico</div>
+        <div class="tab" onclick="switchTab(this,'tab-chg')">Cambios PAD</div>
+      </div>
+      <div class="tab-content active" id="tab-tec">
+        <div class="alert alert-info">&#9432; Los consolidados se generan desde los datos registrados en el sistema.</div>
+        <div style="display:flex;gap:12px;margin-bottom:20px">
+          <select id="sel-tipo-cons" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
+            <option value="">Todos los programas</option><option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
+          </select>
+          <button class="btn btn-primary" onclick="generarConsolidado()">Ver consolidado</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 id="cons-titulo">Consolidado Tecnico</h3></div>
+          <table>
+            <thead><tr><th>N</th><th>Federacion</th><th>Deportista</th><th>DNI</th><th>Nivel</th><th>Monto</th></tr></thead>
+            <tbody id="t-consolidado"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Seleccione tipo para generar</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-eco"><div class="empty-state"><div class="empty-state-icon">&#9744;</div><p>Consolidado economico — proximo</p></div></div>
+      <div class="tab-content" id="tab-chg"><div class="empty-state"><div class="empty-state-icon">&#9744;</div><p>Reporte de cambios (SUB-FO-24) — proximo</p></div></div>
+    </div>
+
+    <!-- GIROS -->
+    <div class="page" id="page-giros">
+      <div class="alert alert-info">&#9432; El giro reemplaza automaticamente menores de edad por sus apoderados. Deportistas sin cuenta se marcan como OPE.</div>
+      <div class="empty-state"><div class="empty-state-icon">&#9745;</div><p>Modulo de giros — proximo</p></div>
+    </div>
+
+    <!-- CATALOGOS -->
+    <div class="page" id="page-catalogos">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-fed')">Federaciones</div>
+        <div class="tab" onclick="switchTab(this,'tab-niv')">Niveles</div>
+        <div class="tab" onclick="switchTab(this,'tab-est')">Estados</div>
+      </div>
+      <div class="tab-content active" id="tab-fed">
+        <div class="card"><table>
+          <thead><tr><th>Cod.</th><th>Nombre</th></tr></thead>
+          <tbody id="t-asoc"><tr><td colspan="2" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div>
+      </div>
+      <div class="tab-content" id="tab-niv">
+        <div class="card"><table>
+          <thead><tr><th>Codigo</th><th>Nivel</th><th>Programa</th></tr></thead>
+          <tbody id="t-niv"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div>
+      </div>
+      <div class="tab-content" id="tab-est">
+        <div class="card"><table>
+          <thead><tr><th>Codigo</th><th>Estado</th><th>Descripcion</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-act">ACT</span></td><td>Activo</td><td>Recibe subvencion economica mensual</td></tr>
+            <tr><td><span class="badge badge-les">LES</span></td><td>Lesionado</td><td>Mantiene beneficio hasta 6 meses (num. 9.1.4.1.6)</td></tr>
+            <tr><td><span class="badge badge-lss">LSS</span></td><td>Lic. sin subsidio</td><td>Solo seguro de salud, hasta 6 meses adicionales</td></tr>
+            <tr><td><span class="badge badge-ret">RET</span></td><td>Retirado</td><td>Sin beneficios activos</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- MONTOS -->
+    <div class="page" id="page-montos">
+      <div class="empty-state"><div class="empty-state-icon">&#9830;</div><p>Montos de referencia — proximo</p></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: NUEVO CAMBIO PAD -->
+<div class="modal-overlay" id="modal-cambio">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2>Registrar cambio PAD</h2>
+      <button class="modal-close" onclick="closeModal('modal-cambio')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="alert-cambio"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tipo de movimiento</label>
+          <select id="sel-tipo-mov" onchange="toggleMov()">
+            <option value="">Seleccionar...</option>
+            <option value="ING">Ingreso</option>
+            <option value="CAMBNIV">Cambio de nivel</option>
+            <option value="RET">Retiro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Periodo</label>
+          <input type="month" id="inp-periodo">
+        </div>
+        <div class="form-group">
+          <label>Programa</label>
+          <select id="sel-prog" onchange="fillNiveles()">
+            <option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>DNI del deportista</label>
+          <div style="display:flex;gap:6px">
+            <input id="inp-dni" placeholder="Ingrese DNI y busque..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px" maxlength="12" onkeydown="if(event.key==='Enter')buscarDNI()">
+            <button class="btn btn-sm btn-secondary" onclick="buscarDNI()">Buscar</button>
+            <button class="btn btn-sm btn-secondary" onclick="openModal('modal-deportista')">+ Nuevo</button>
+          </div>
+          <span class="form-hint">Si no existe, use &ldquo;+ Nuevo&rdquo; para registrarlo</span>
+        </div>
+      </div>
+      <div class="found-box" id="found-box">
+        <strong id="found-nombre"></strong>
+        <span id="found-info" style="font-size:12px;color:var(--accent);margin-left:8px"></span>
+      </div>
+
+      <div class="form-section" id="sec-nivel">
+        <div class="form-section-title"><span class="dot" style="background:var(--blue)"></span>Nivel</div>
+        <div class="form-grid">
+          <div class="form-group" id="fg-niv-ant" style="display:none">
+            <label>Nivel anterior</label><select id="sel-niv-ant"></select>
+          </div>
+          <div class="form-group">
+            <label>Nivel</label><select id="sel-niv"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section" id="sec-evento">
+        <div class="form-section-title"><span class="dot" style="background:var(--amber)"></span>Evento deportivo</div>
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label>Nombre del evento</label>
+            <input id="inp-ev-nombre" placeholder="Ej: XX Juegos Bolivarianos Ayacucho 2025">
+          </div>
+          <div class="form-group">
+            <label>Resultado</label>
+            <select id="sel-resultado">
+              <option value="ORO">Medalla de Oro</option><option value="PLATA">Medalla de Plata</option>
+              <option value="BRONCE">Medalla de Bronce</option><option value="PARTICIPACION">Participacion / Clasificacion</option><option value="OTRO">Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Modalidad / Categoria</label>
+            <input id="inp-ev-modalidad" placeholder="Ej: Espada individual femenina">
+          </div>
+          <div class="form-group">
+            <label>Fecha inicio</label><input type="date" id="inp-ev-ini">
+          </div>
+          <div class="form-group">
+            <label>Fecha fin</label><input type="date" id="inp-ev-fin">
+          </div>
+          <div class="form-group">
+            <label>Lugar</label>
+            <input id="inp-ev-lugar" placeholder="Ciudad, Pais">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section" id="sec-retiro" style="display:none">
+        <div class="form-section-title"><span class="dot" style="background:var(--danger)"></span>Motivo de retiro</div>
+        <div class="form-group">
+          <label>Causal (Directiva 9.1.5.2)</label>
+          <select id="sel-causal">
+            <option value="">Seleccionar...</option>
+            <option value="1">No participar en eventos fundamentales sin causa justificada</option>
+            <option value="2">Conducta etica y moral inadecuada</option>
+            <option value="3">Asistencia menor al 90% por 6 meses consecutivos</option>
+            <option value="4">Sancion disciplinaria o condena judicial</option>
+            <option value="5">Dopaje certificado por ONAP</option>
+            <option value="6">Suspension por infraccion antidopaje</option>
+            <option value="7">Sin resultados calificatorios en 12 meses</option>
+            <option value="8">Presentacion de documentacion falsa</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <label>Detalle adicional</label>
+          <textarea id="inp-det-retiro" placeholder="Detalle del motivo..."></textarea>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title"><span class="dot" style="background:var(--text3)"></span>Documentacion</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-group">
+            <label>Nro. informe</label>
+            <input id="inp-informe" placeholder="000XXX-2026-DINADAF">
+          </div>
+          <div class="form-group">
+            <label>Nro. expediente</label>
+            <input id="inp-expediente" placeholder="00XXXXX-2026">
+          </div>
+          <div class="form-group">
+            <label>Tipo doc. expediente</label>
+            <select id="sel-tipo-exp">
+              <option value="EXPEDIENTE">Expediente</option><option value="INFORME">Informe</option>
+              <option value="OFICIO">Oficio</option><option value="RESOLUCION">Resolucion</option><option value="OTRO">Otro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cambio')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar" onclick="guardarCambio()">Registrar cambio</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NUEVO DEPORTISTA -->
+<div class="modal-overlay" id="modal-deportista">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2>Registrar deportista</h2>
+      <button class="modal-close" onclick="closeModal('modal-deportista')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="alert-dep"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Tipo de documento</label>
+          <select id="d-tipodoc"><option value="DNI">DNI</option><option value="CE">Carne de extranjeria</option><option value="PAS">Pasaporte</option><option value="OTR">Otro</option></select>
+        </div>
+        <div class="form-group"><label>Numero de documento</label><input id="d-doc" maxlength="20"></div>
+        <div class="form-group"><label>Apellido paterno</label><input id="d-pat"></div>
+        <div class="form-group"><label>Apellido materno</label><input id="d-mat"></div>
+        <div class="form-group"><label>Nombres</label><input id="d-nom"></div>
+        <div class="form-group"><label>Sexo</label><select id="d-sexo"><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
+        <div class="form-group"><label>Fecha de nacimiento</label><input type="date" id="d-fnac"></div>
+        <div class="form-group"><label>Federacion / Asociacion</label><select id="d-asoc"><option value="">Seleccionar...</option></select></div>
+        <div class="form-group"><label>Agrupacion</label>
+          <select id="d-agrup"><option value="">Seleccionar...</option><option value="D">Deportista</option><option value="P">Paradeportista</option></select>
+        </div>
+        <div class="form-group"><label>Numero de cuenta BN</label><input id="d-cuenta" placeholder="Opcional"><span class="form-hint">Vacio si en proceso de apertura (se girara por OPE)</span></div>
+        <div class="form-group"><label>Correo electronico</label><input type="email" id="d-correo"></div>
+        <div class="form-group"><label>Telefono</label><input id="d-tel"></div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title"><span class="dot" style="background:var(--purple)"></span>Apoderado <span style="font-weight:400;color:var(--text3);font-size:11px">(solo menores de edad)</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Tipo doc.</label><select id="a-tipodoc"><option value="DNI">DNI</option><option value="CE">CE</option></select></div>
+          <div class="form-group"><label>Numero doc.</label><input id="a-doc"></div>
+          <div class="form-group"><label>Apellido paterno</label><input id="a-pat"></div>
+          <div class="form-group"><label>Apellido materno</label><input id="a-mat"></div>
+          <div class="form-group"><label>Nombres</label><input id="a-nom"></div>
+          <div class="form-group"><label>Fecha nacimiento</label><input type="date" id="a-fnac"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-deportista')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarDeportista()">Guardar deportista</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:3001';
+let online = false;
+let cats = { asociaciones: [], niveles: [] };
+let depData = [];
+let depFilter = '';
+let depSel = null;
+
+// ── API CHECK ──────────────────────────────────────────────
+async function checkApi() {
+  try {
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(2500) });
+    online = r.ok;
+  } catch { online = false; }
+
+  document.getElementById('api-dot').className = 'api-dot' + (online ? ' online' : '');
+  document.getElementById('api-txt').textContent = online ? 'API local activa' : 'API local inactiva';
+  document.getElementById('offline-bar').className = 'offline-bar' + (online ? '' : ' show');
+  document.getElementById('btn-export').style.display = online ? 'inline-flex' : 'none';
+  document.getElementById('btn-nuevo').style.display = online ? 'inline-flex' : 'none';
+  document.getElementById('btn-nuevo-dep').style.display = online ? 'inline-flex' : 'none';
+
+  const offMsg = document.getElementById('cambios-offline-msg');
+  const cambiosMain = document.getElementById('cambios-main');
+  if (offMsg) { offMsg.style.display = online ? 'none' : 'flex'; cambiosMain.style.display = online ? 'block' : 'none'; }
+
+  return online;
+}
+
+// ── FETCH HELPERS ──────────────────────────────────────────
+async function apiGet(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function apiPost(path, body) {
+  const r = await fetch(API + path, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Error');
+  return j;
+}
+async function staticJson(f) {
+  try { const r = await fetch('./data/' + f); return r.ok ? r.json() : null; } catch { return null; }
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────
+async function loadDashboard() {
+  await Promise.all([loadKpis(), loadMovimientos(), loadResumen()]);
+}
+
+async function loadKpis() {
+  let k;
+  try { k = online ? await apiGet('/api/reportes/kpi') : await staticJson('kpi.json'); } catch { k = await staticJson('kpi.json'); }
+  if (!k) return;
+  document.getElementById('k-total').textContent = k.total_activos ?? '—';
+  document.getElementById('k-p1').textContent = k.activos_pad1 ?? '—';
+  document.getElementById('k-p2').textContent = k.activos_pad2 ?? '—';
+  document.getElementById('k-pnm').textContent = k.activos_pnm ?? '—';
+  document.getElementById('k-les').textContent = k.total_les ?? 0;
+  if (k.exportado) document.getElementById('last-update').textContent = 'Al ' + new Date(k.exportado).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
+}
+
+async function loadMovimientos() {
+  let d;
+  try { d = online ? await apiGet('/api/movimientos/recientes') : (await staticJson('movimientos_recientes.json'))?.data; } catch { d = null; }
+  const tbody = document.getElementById('t-movimientos');
+  if (!d?.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text3)">Sin datos</td></tr>'; return; }
+  const lbl = {ING:'Ingreso',CAMBNIV:'Cambio',RET:'Retiro'};
+  const cls = {ING:'badge-ing',CAMBNIV:'badge-cambniv',RET:'badge-retiro'};
+  tbody.innerHTML = d.slice(0,10).map(r => `<tr>
+    <td>${r.deportista||r.num_documento}</td>
+    <td><span class="badge ${cls[r.cod_tipo_movimiento]||''}">${lbl[r.cod_tipo_movimiento]||r.cod_tipo_movimiento}</span></td>
+    <td>${r.cod_tipo_pad} ${r.nivel_anterior?r.nivel_anterior+' &rarr; '+r.nivel_nuevo:(r.cod_nivel||r.nivel_nuevo||'')}</td>
+    <td>${r.periodo_vigencia||'—'}</td></tr>`).join('');
+  document.getElementById('k-mov').textContent = d.length;
+}
+
+async function loadResumen() {
+  let d;
+  try { d = online ? await apiGet('/api/reportes/activos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { d = null; }
+  if (!d) return;
+  const g = {};
+  d.forEach(r => {
+    const k = r.cod_tipo_pad+'|'+(r.nivel_desc||r.cod_nivel);
+    if (!g[k]) g[k] = {tipo:r.cod_tipo_pad, nivel:r.nivel_desc||r.cod_nivel, n:0, t:0};
+    g[k].n++; g[k].t += parseFloat(r.monto_soles||0);
+  });
+  const tbody = document.getElementById('t-resumen');
+  tbody.innerHTML = Object.values(g).sort((a,b) => a.tipo.localeCompare(b.tipo)||a.nivel.localeCompare(b.nivel))
+    .map(g => `<tr>
+      <td><span class="badge badge-${g.tipo.toLowerCase()}">${g.tipo.replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td>
+      <td>${g.nivel}</td><td>${g.n}</td>
+      <td class="mono">S/ ${g.t.toLocaleString('es-PE',{minimumFractionDigits:2})}</td></tr>`).join('');
+}
+
+// ── DEPORTISTAS ──────────────────────────────────────────────
+async function loadDep() {
+  let d;
+  try { d = online ? await apiGet('/api/reportes/activos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { d = null; }
+  depData = d || [];
+  renderDep(depData);
+}
+
+function renderDep(data) {
+  document.getElementById('dep-count').textContent = data.length + ' registros';
+  const tbody = document.getElementById('t-dep');
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `<tr>
+    <td class="mono">${r.num_documento}</td>
+    <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
+    <td>${r.asociacion||'—'}</td>
+    <td><span class="badge badge-${(r.cod_tipo_pad||'').toLowerCase()}">${(r.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td>
+    <td>${r.nivel_desc||r.cod_nivel||'—'}</td>
+    <td><span class="badge badge-${(r.cod_estado_pad||'act').toLowerCase()}">${r.cod_estado_pad||'ACT'}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="verDep('${r.num_documento}')">Ver</button></td></tr>`).join('');
+}
+
+function filterDep() {
+  const q = document.getElementById('q-dep').value.toLowerCase();
+  const f = depFilter;
+  renderDep(depData.filter(r => {
+    const nombre = (r.deportista||(r.ap_paterno+' '+r.ap_materno+' '+r.nombres)||'').toLowerCase();
+    const match = !q || nombre.includes(q) || (r.num_documento||'').includes(q) || (r.asociacion||'').toLowerCase().includes(q);
+    const filt = !f || r.cod_tipo_pad === f || r.cod_estado_pad === f;
+    return match && filt;
+  }));
+}
+
+function verDep(dni) {
+  if (!online) return;
+  apiGet('/api/deportistas/buscar?dni=' + encodeURIComponent(dni)).then(data => {
+    if (!data.found) return;
+    const d = data.deportista;
+    alert(d.ap_paterno+' '+d.ap_materno+', '+d.nombres+'\nDNI: '+d.num_documento+'\nCuenta: '+(d.num_cuenta||'Sin cuenta (OPE)'));
+  });
+}
+
+// ── CAMBIOS PAD PAGE ──────────────────────────────────────
+async function loadCambios() {
+  if (!online) return;
+  let d;
+  try { d = await apiGet('/api/movimientos/recientes'); } catch { d = []; }
+  const lbl = {ING:'Ingreso',CAMBNIV:'Cambio de nivel',RET:'Retiro'};
+  const cls = {ING:'badge-ing',CAMBNIV:'badge-cambniv',RET:'badge-retiro'};
+  const tbody = document.getElementById('t-cambios');
+  if (!d?.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Sin movimientos</td></tr>'; return; }
+  tbody.innerHTML = d.map(r => `<tr>
+    <td>${r.periodo_vigencia||'—'}</td>
+    <td><span class="badge ${cls[r.cod_tipo_movimiento]||''}">${lbl[r.cod_tipo_movimiento]||r.cod_tipo_movimiento}</span></td>
+    <td>${r.deportista||r.num_documento}</td>
+    <td>${r.cod_tipo_pad}</td>
+    <td>${r.nivel_anterior?r.nivel_anterior+' &rarr; '+r.nivel_nuevo:(r.nivel_nuevo||'—')}</td>
+    <td class="mono" style="font-size:11px">${r.nro_expediente||'—'}</td>
+    <td class="mono" style="font-size:11px">${r.nro_informe||'—'}</td></tr>`).join('');
+}
+
+// ── CATALOGOS ──────────────────────────────────────────────
+async function loadCats() {
+  if (!online) return;
+  try { cats = await apiGet('/api/deportistas/catalogos'); } catch { return; }
+  // Tabla asociaciones
+  document.getElementById('t-asoc').innerHTML = cats.asociaciones.map(a =>
+    `<tr><td class="mono" style="font-size:12px">${a.cod_asociacion}</td><td>${a.nombre}</td></tr>`).join('');
+  // Tabla niveles
+  document.getElementById('t-niv').innerHTML = cats.niveles.map(n =>
+    `<tr><td class="mono" style="font-size:12px">${n.cod_nivel}</td><td>${n.descripcion||n.cod_nivel}</td>
+    <td><span class="badge badge-${(n.cod_tipo_pad||'').toLowerCase()}">${(n.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td></tr>`).join('');
+  // Fill asociacion select in deportista form
+  const sel = document.getElementById('d-asoc');
+  if (sel && sel.options.length <= 1) cats.asociaciones.forEach(a => {
+    const o = document.createElement('option'); o.value = a.cod_asociacion; o.textContent = a.nombre; sel.appendChild(o);
+  });
+  fillNiveles();
+}
+
+function fillNiveles() {
+  const prog = document.getElementById('sel-prog')?.value || 'PAD1';
+  const filt = cats.niveles.filter(n => n.cod_tipo_pad === prog);
+  ['sel-niv','sel-niv-ant'].forEach(id => {
+    const s = document.getElementById(id); if (!s) return;
+    s.innerHTML = filt.map(n => `<option value="${n.cod_nivel}">${n.descripcion||n.cod_nivel}</option>`).join('');
+  });
+}
+
+// ── CONSOLIDADO ──────────────────────────────────────────────
+async function generarConsolidado() {
+  let d;
+  try { d = online ? await apiGet('/api/reportes/activos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { return; }
+  if (!d) return;
+  const tipo = document.getElementById('sel-tipo-cons').value;
+  const filt = tipo ? d.filter(r => r.cod_tipo_pad === tipo) : d;
+  document.getElementById('cons-titulo').textContent = 'Consolidado Tecnico ' + (tipo ? tipo.replace('PAD1','PAD I').replace('PAD2','PAD II') : 'General');
+  document.getElementById('t-consolidado').innerHTML = filt.map((r,i) => `<tr>
+    <td>${i+1}</td><td>${r.asociacion||'—'}</td>
+    <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
+    <td class="mono" style="font-size:12px">${r.num_documento}</td>
+    <td>${r.nivel_desc||r.cod_nivel}</td>
+    <td class="mono">S/ ${r.monto_soles?Number(r.monto_soles).toLocaleString('es-PE',{minimumFractionDigits:2}):'—'}</td></tr>`).join('');
+}
+
+// ── MODAL: CAMBIO ──────────────────────────────────────────
+function toggleMov() {
+  const v = document.getElementById('sel-tipo-mov').value;
+  document.getElementById('sec-evento').style.display = (v==='ING'||v==='CAMBNIV') ? 'block' : 'none';
+  document.getElementById('sec-retiro').style.display = v==='RET' ? 'block' : 'none';
+  document.getElementById('sec-nivel').style.display = v==='' ? 'none' : 'block';
+  document.getElementById('fg-niv-ant').style.display = v==='CAMBNIV' ? 'block' : 'none';
+}
+
+async function buscarDNI() {
+  if (!online) { showAlert('alert-cambio','danger','API no disponible'); return; }
+  const dni = document.getElementById('inp-dni').value.trim();
+  if (!dni) return;
+  try {
+    const data = await apiGet('/api/deportistas/buscar?dni=' + encodeURIComponent(dni));
+    const box = document.getElementById('found-box');
+    if (data.found) {
+      depSel = data.deportista;
+      document.getElementById('found-nombre').textContent = data.deportista.ap_paterno+' '+data.deportista.ap_materno+', '+data.deportista.nombres;
+      const pad = (data.pad_records||[]).find(p => p.cod_estado_pad==='ACT');
+      document.getElementById('found-info').textContent = pad ? '('+pad.cod_tipo_pad.replace('PAD1','PAD I').replace('PAD2','PAD II')+' Niv. '+(pad.nivel_desc||pad.cod_nivel)+')' : '(sin PAD activo)';
+      box.classList.add('show');
+    } else {
+      depSel = null; box.classList.remove('show');
+      showAlert('alert-cambio','warning','Deportista no encontrado. Use &ldquo;+ Nuevo&rdquo; para registrarlo.');
+    }
+  } catch(e) { showAlert('alert-cambio','danger','Error: '+e.message); }
+}
+
+async function guardarCambio() {
+  if (!online) return;
+  if (!depSel) { showAlert('alert-cambio','warning','Busque y seleccione un deportista primero'); return; }
+  const tipo = document.getElementById('sel-tipo-mov').value;
+  if (!tipo) { showAlert('alert-cambio','warning','Seleccione el tipo de movimiento'); return; }
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando...';
+  const periodoRaw = document.getElementById('inp-periodo').value;
+  const periodo = periodoRaw ? periodoRaw.replace('-','') : '';
+  const causalEl = document.getElementById('sel-causal');
+  const body = {
+    tipo_movimiento: tipo,
+    cod_deportista: depSel.cod_deportista,
+    cod_tipo_pad: document.getElementById('sel-prog').value,
+    cod_nivel: document.getElementById('sel-niv').value,
+    cod_nivel_anterior: document.getElementById('sel-niv-ant')?.value || null,
+    periodo_vigencia: periodo,
+    nro_informe: document.getElementById('inp-informe').value.trim() || null,
+    motivo: tipo==='RET' ? (causalEl.options[causalEl.selectedIndex]?.text||null) : null,
+    detalle_evento: tipo==='RET' ? (document.getElementById('inp-det-retiro').value.trim()||null) : (document.getElementById('inp-ev-nombre').value.trim()||null),
+    expedientes: [{
+      nro_expediente: document.getElementById('inp-expediente').value.trim(),
+      tipo_documento: document.getElementById('sel-tipo-exp').value
+    }].filter(e => e.nro_expediente),
+  };
+  try {
+    const res = await apiPost('/api/movimientos', body);
+    showAlert('alert-cambio','success','&#10003; Registrado. cod_cambio: '+res.cod_cambio);
+    setTimeout(() => { closeModal('modal-cambio'); resetCambio(); loadDashboard(); loadCambios(); }, 1800);
+  } catch(e) { showAlert('alert-cambio','danger','Error: '+e.message); }
+  finally { btn.disabled=false; btn.textContent='Registrar cambio'; }
+}
+
+function resetCambio() {
+  depSel=null;
+  document.getElementById('inp-dni').value='';
+  document.getElementById('sel-tipo-mov').value='';
+  document.getElementById('found-box').classList.remove('show');
+  document.getElementById('alert-cambio').innerHTML='';
+  toggleMov();
+}
+
+// ── MODAL: DEPORTISTA ──────────────────────────────────────
+async function guardarDeportista() {
+  if (!online) return;
+  const body = {
+    num_documento: document.getElementById('d-doc').value.trim(),
+    tipo_documento: document.getElementById('d-tipodoc').value,
+    ap_paterno: document.getElementById('d-pat').value.trim().toUpperCase(),
+    ap_materno: document.getElementById('d-mat').value.trim().toUpperCase(),
+    nombres: document.getElementById('d-nom').value.trim().toUpperCase(),
+    sexo: document.getElementById('d-sexo').value,
+    fecha_nac: document.getElementById('d-fnac').value || null,
+    cod_asociacion: parseInt(document.getElementById('d-asoc').value) || null,
+    num_cuenta: document.getElementById('d-cuenta').value.trim() || null,
+    agrupacion: document.getElementById('d-agrup').value || null,
+    correo: document.getElementById('d-correo').value.trim() || null,
+    telefono: document.getElementById('d-tel').value.trim() || null,
+  };
+  if (!body.num_documento||!body.ap_paterno||!body.nombres) {
+    showAlert('alert-dep','warning','Complete: numero de documento, apellido paterno y nombres'); return;
+  }
+  try {
+    const res = await apiPost('/api/deportistas', body);
+    showAlert('alert-dep','success','&#10003; Deportista registrado. Cod: '+res.cod_deportista);
+    if (document.getElementById('inp-dni')) document.getElementById('inp-dni').value = body.num_documento;
+    setTimeout(() => { closeModal('modal-deportista'); loadDep(); }, 1500);
+  } catch(e) { showAlert('alert-dep','danger','Error: '+e.message); }
+}
+
+// ── EXPORT ────────────────────────────────────────────────
+async function doExport() {
+  const btn = document.getElementById('btn-export');
+  btn.disabled=true; btn.innerHTML='<span class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--text)"></span>';
+  try {
+    const res = await apiPost('/api/reportes/exportar', {});
+    document.getElementById('last-update').textContent = 'Exportado: '+new Date(res.exportado).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
+    await loadDashboard();
+  } catch(e) { alert('Error: '+e.message); }
+  finally { btn.disabled=false; btn.textContent='&#8593; Exportar datos'; }
+}
+
+// ── UI HELPERS ────────────────────────────────────────────
+function showAlert(id, type, msg) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+function openModal(id) { document.getElementById(id)?.classList.add('show'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
+function switchTab(el, tabId) {
+  el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const page = el.closest('.page')||el.closest('.tab-content')?.parentElement||document.body;
+  page.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  document.getElementById(tabId)?.classList.add('active');
+}
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+id)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el?.classList.add('active');
+  const titles = {dashboard:'Dashboard',deportistas:'Deportistas',cambios:'Cambios PAD',consolidados:'Consolidados',giros:'Giros',catalogos:'Catalogos',montos:'Montos de referencia'};
+  document.getElementById('page-title').textContent = titles[id]||id;
+  const btnNuevo = document.getElementById('btn-nuevo');
+  if (btnNuevo) btnNuevo.style.display = (online && (id==='dashboard'||id==='cambios')) ? 'inline-flex' : 'none';
+  if (id==='deportistas') loadDep();
+  if (id==='cambios') loadCambios();
+  if (id==='catalogos') loadCats();
+}
+
+// ── PILLS ────────────────────────────────────────────────
+document.querySelectorAll('.filter-pills').forEach(group => {
+  group.querySelectorAll('.pill').forEach(p => {
+    p.addEventListener('click', () => {
+      group.querySelectorAll('.pill').forEach(pp => pp.classList.remove('active'));
+      p.classList.add('active');
+      if (group.id === 'pills-dep') { depFilter = p.dataset.f||''; filterDep(); }
+    });
+  });
+});
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target===m) m.classList.remove('show'); });
+});
+
+// Set default period
+const now = new Date();
+const inp = document.getElementById('inp-periodo');
+if (inp) inp.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+
+// ── INIT ──────────────────────────────────────────────────
+(async () => {
+  await checkApi();
+  await loadDashboard();
+  if (online) await loadCats();
+  setInterval(checkApi, 30000);
+})();
+</script>
 </body>
 </html>
