@@ -980,16 +980,37 @@ const inp = document.getElementById('inp-periodo');
 if (inp) inp.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
 
 // ── INIT ──────────────────────────────────────────────────
+function showLoadingMsg(msg) {
+  const el = document.querySelector('#loading-screen div:last-child');
+  if (el) el.textContent = msg;
+}
+
 (async () => {
-  if (!msalApp) return;
-  // Handle redirect response (comes back after Microsoft login)
-  try { await msalApp.handleRedirectPromise(); } catch(e) { console.warn(e); }
+  if (!msalApp) {
+    showLoadingMsg('Error: MSAL no disponible');
+    return;
+  }
+
+  showLoadingMsg('Verificando sesion...');
+  try {
+    // Race handleRedirectPromise with a 5s timeout
+    await Promise.race([
+      msalApp.handleRedirectPromise(),
+      new Promise((_,rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+    ]);
+  } catch(e) {
+    if (e.message !== 'timeout') console.warn('handleRedirectPromise error:', e);
+  }
 
   const accounts = msalApp.getAllAccounts();
   if (accounts.length === 0) {
-    // Not authenticated — redirect to Microsoft login immediately
-    await msalApp.loginRedirect({ scopes: GRAPH_SCOPES });
-    return; // page will redirect, code below won't run
+    showLoadingMsg('Redirigiendo al login de Microsoft...');
+    try {
+      msalApp.loginRedirect({ scopes: GRAPH_SCOPES });
+    } catch(e) {
+      showLoadingMsg('Error al redirigir: ' + e.message);
+    }
+    return;
   }
 
   // Authenticated — show app starting on home page
