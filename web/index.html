@@ -715,6 +715,7 @@ let depSel = null;
 
 // ── MSAL / ONEDRIVE ────────────────────────────────────────
 const IS_LOCALHOST = ['localhost','127.0.0.1'].includes(location.hostname);
+const GESTION_PAD_USERS = ['apoyo19dinadaf@ipd.gob.pe', 'dzuta@ipd.gob.pe'];
 const MSAL_CONFIG = {
   auth: {
     clientId: '4ebfc360-a6b5-4330-8a73-682768a95b64',
@@ -770,13 +771,18 @@ async function msalSignIn() {
 
 function showApp(account) {
   document.getElementById('loading-screen').style.display = 'none';
-  // Show the home screen (module selector), NOT the sidebar+main-app
   document.getElementById('home-screen').classList.remove('hidden');
   if (account) {
+    const userEmail = (account.username || '').toLowerCase();
     const email = document.getElementById('home-user-email');
     if (email) email.textContent = account.username || '';
     const btn = document.getElementById('btn-signin');
     if (btn) { btn.textContent = '● ' + (account.username||'Sesion activa'); btn.title = 'Sesion activa'; }
+
+    // Mostrar tarjeta Gestion PAD solo a usuarios autorizados
+    const mcGestion = document.getElementById('mc-gestion');
+    const hasGestionAccess = IS_LOCALHOST || GESTION_PAD_USERS.includes(userEmail);
+    if (mcGestion) mcGestion.style.display = hasGestionAccess ? 'block' : 'none';
   }
 }
 
@@ -1395,9 +1401,16 @@ function switchTab(el, tabId) {
 }
 // ── MODULE NAVIGATION ─────────────────────────────────────
 function enterModule(mod) {
-  if (mod === 'gestion' && !online) {
-    alert('La API local no está activa. Inicia el servidor antes de acceder a este módulo.\n\nEjecuta: iniciar_api.vbs');
-    return;
+  if (mod === 'gestion') {
+    const userEmail = (document.getElementById('home-user-email')?.textContent || '').toLowerCase();
+    if (!IS_LOCALHOST && !GESTION_PAD_USERS.includes(userEmail)) {
+      alert('No tienes acceso al módulo de Gestión PAD.');
+      return;
+    }
+    if (!online) {
+      alert('La API local no está activa. Inicia el servidor antes de acceder a este módulo.\n\nEjecuta: iniciar_api.vbs');
+      return;
+    }
   }
   document.getElementById('home-screen').classList.add('hidden');
   document.getElementById('sidebar').style.display = 'flex';
