@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const { query } = require('../db');
 const { uploadJSON } = require('../sharepoint');
+
+const WEB_DATA_DIR = path.join(__dirname, '../../web/data');
 
 // KPI summary — used by dashboard Module 1
 router.get('/kpi', async (_req, res) => {
@@ -56,23 +60,33 @@ router.get('/activos', async (_req, res) => {
   }
 });
 
-// Export data to OneDrive /pad-data/ for GitHub Pages dashboard
+// Export data — writes to web/data/ (GitHub Pages) and attempts OneDrive upload
 router.post('/exportar', async (_req, res) => {
   try {
     const exportTime = new Date().toISOString();
 
-    const [kpiR, activosR, movimientosR] = await Promise.all([
+    const [kpiR, activosR, movimientosR, asocR] = await Promise.all([
+      // KPI completo (igual que GET /kpi)
       query(`SELECT
                SUM(CASE WHEN p.cod_tipo_pad='PAD1' AND p.cod_estado_pad='ACT' THEN 1 ELSE 0 END) AS activos_pad1,
                SUM(CASE WHEN p.cod_tipo_pad='PAD2' AND p.cod_estado_pad='ACT' THEN 1 ELSE 0 END) AS activos_pad2,
                SUM(CASE WHEN p.cod_tipo_pad='PNM'  AND p.cod_estado_pad='ACT' THEN 1 ELSE 0 END) AS activos_pnm,
                SUM(CASE WHEN p.cod_estado_pad='ACT' THEN 1 ELSE 0 END) AS total_activos,
-               SUM(CASE WHEN p.cod_estado_pad='LES' THEN 1 ELSE 0 END) AS total_les
+               SUM(CASE WHEN p.cod_estado_pad='LES' THEN 1 ELSE 0 END) AS total_les,
+               (SELECT ISNULL(SUM(mr2.monto_soles), 0)
+                FROM pad.PAD p2
+                JOIN pad.montos_referencia mr2
+                  ON mr2.cod_nivel = p2.cod_nivel
+                  AND FORMAT(GETDATE(),'yyyyMM') BETWEEN mr2.periodo_desde AND ISNULL(mr2.periodo_hasta,'999999')
+                WHERE p2.cod_estado_pad='ACT') AS monto_mensual_total,
+               FORMAT(GETDATE(),'yyyyMM') AS periodo_actual
              FROM pad.PAD p`),
+      // Activos sin datos sensibles (sin DNI, sin cuenta, sin correo/telefono)
       query(`SELECT d.ap_paterno+' '+d.ap_materno+', '+d.nombres AS deportista,
-                    d.num_documento, p.cod_tipo_pad, p.cod_nivel, p.cod_estado_pad,
+                    p.cod_tipo_pad, p.cod_nivel, p.cod_estado_pad, p.es_permanente,
                     n.nombre_nivel AS nivel_desc, a.nombre AS asociacion,
-                    mr.monto_soles
+                    mr.monto_soles,
+                    CASE WHEN d.num_cuenta IS NULL THEN 'OPE' ELSE 'CUENTA' END AS tipo_giro
              FROM pad.PAD p
              JOIN pad.Deportistas d ON p.cod_deportista=d.cod_deportista
              JOIN cat.Nivel n ON p.cod_nivel=n.cod_nivel
@@ -82,6 +96,7 @@ router.post('/exportar', async (_req, res) => {
                AND FORMAT(GETDATE(),'yyyyMM') BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta,'999999')
              WHERE p.cod_estado_pad='ACT'
              ORDER BY p.cod_tipo_pad, p.cod_nivel, d.ap_paterno`),
+      // Movimientos recientes (sin DNI)
       query(`SELECT TOP 100
                     c.cod_tip_mov AS cod_tipo_movimiento,
                     d.ap_paterno+' '+d.ap_materno+', '+d.nombres AS deportista,
@@ -91,24 +106,45 @@ router.post('/exportar', async (_req, res) => {
              JOIN pad.PAD p ON c.cod_pad=p.cod_pad
              JOIN pad.Deportistas d ON p.cod_deportista=d.cod_deportista
              ORDER BY c.cod_cambio DESC`),
+      // Asociaciones deportivas
+      query(`SELECT cod_asociacion, nombre, nombre_formal, tipo_organizacion, disciplina, activo
+             FROM pad.Asociacion_Deportiva
+             WHERE activo=1
+             ORDER BY nombre`),
     ]);
 
-    const kpiData    = { ...kpiR.recordset[0], exportado: exportTime };
-    const activosData   = { data: activosR.recordset, exportado: exportTime };
-    const movData    = { data: movimientosR.recordset, exportado: exportTime };
+    const kpiData   = { ...kpiR.recordset[0], exportado: exportTime };
+    const activosData  = { data: activosR.recordset, exportado: exportTime };
+    const movData   = { data: movimientosR.recordset, exportado: exportTime };
+    const asocData  = asocR.recordset;
 
-    // Upload to OneDrive /pad-data/
-    const [urlKpi, urlActivos, urlMov] = await Promise.all([
-      uploadJSON('kpi.json', kpiData),
-      uploadJSON('activos.json', activosData),
-      uploadJSON('movimientos_recientes.json', movData),
-    ]);
+    // 1. Escribir en web/data/ (GitHub Pages — siempre disponible sin auth)
+    if (!fs.existsSync(WEB_DATA_DIR)) fs.mkdirSync(WEB_DATA_DIR, { recursive: true });
+    fs.writeFileSync(path.join(WEB_DATA_DIR, 'kpi.json'),                    JSON.stringify(kpiData, null, 2));
+    fs.writeFileSync(path.join(WEB_DATA_DIR, 'activos.json'),                JSON.stringify(activosData, null, 2));
+    fs.writeFileSync(path.join(WEB_DATA_DIR, 'movimientos_recientes.json'),  JSON.stringify(movData, null, 2));
+    fs.writeFileSync(path.join(WEB_DATA_DIR, 'asociaciones.json'),           JSON.stringify(asocData, null, 2));
+
+    // 2. Intentar subir a OneDrive (no falla si no hay token)
+    let oneDriveOk = false;
+    try {
+      await Promise.all([
+        uploadJSON('kpi.json', kpiData),
+        uploadJSON('activos.json', activosData),
+        uploadJSON('movimientos_recientes.json', movData),
+        uploadJSON('asociaciones.json', asocData),
+      ]);
+      oneDriveOk = true;
+    } catch (odErr) {
+      console.warn('OneDrive upload skipped:', odErr.message);
+    }
 
     res.json({
       ok: true,
       exportado: exportTime,
       registros: activosR.recordset.length,
-      archivos: { kpi: urlKpi, activos: urlActivos, movimientos: urlMov },
+      web_data: true,
+      onedrive: oneDriveOk,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1025,8 +1025,17 @@ function updateAuthUI() {
 
 async function msalSignIn() {
   if (!msalApp) return;
-  try { await msalApp.loginRedirect({ scopes: GRAPH_SCOPES }); }
-  catch(e) { console.warn('Redirect failed:', e.message); }
+  const btn = document.getElementById('btn-signin');
+  const orig = btn?.textContent;
+  if (btn) btn.textContent = 'Iniciando...';
+  try {
+    const result = await msalApp.loginPopup({ scopes: GRAPH_SCOPES });
+    showApp(result.account);
+    updateAuthUI();
+  } catch(e) {
+    if (e.errorCode !== 'user_cancelled') toast('Error al iniciar sesión: ' + (e.errorCode || e.message), 'error');
+    if (btn) btn.textContent = orig;
+  }
 }
 
 function showApp(account) {
@@ -1759,7 +1768,7 @@ function renderNomina(data) {
     return;
   }
   tbody.innerHTML = filtered.map(r => `<tr>
-    <td class="mono">${r.num_documento}</td>
+    <td class="mono" style="color:${r.num_documento?'inherit':'var(--text3)'}">${r.num_documento||'—'}</td>
     <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
     <td>${r.asociacion||'—'}</td>
     <td><span class="badge badge-${(r.cod_tipo_pad||'').toLowerCase()}">${(r.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td>
@@ -1892,9 +1901,11 @@ async function doExport() {
   try {
     const res = await apiPost('/api/reportes/exportar', {});
     document.getElementById('last-update').textContent = 'Exportado: '+new Date(res.exportado).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
+    const od = res.onedrive ? ' + OneDrive' : '';
+    toast(`Datos exportados (${res.registros} activos). Ahora ejecuta publicar_datos.bat para publicar en GitHub Pages.${od}`, 'success', 'Exportación completa', 8000);
     await loadDashboard();
-  } catch(e) { alert('Error: '+e.message); }
-  finally { btn.disabled=false; btn.textContent='&#8593; Exportar datos'; }
+  } catch(e) { toast('Error al exportar: '+e.message, 'error'); }
+  finally { btn.disabled=false; btn.innerHTML='&#8593; Exportar datos'; }
 }
 
 // ── UI HELPERS ────────────────────────────────────────────
@@ -1934,12 +1945,20 @@ function switchTab(el, tabId) {
 function enterModule(mod) {
   if (mod === 'gestion') {
     const userEmail = (document.getElementById('home-user-email')?.textContent || '').toLowerCase();
-    if (!IS_LOCALHOST && !GESTION_PAD_USERS.includes(userEmail)) {
-      alert('No tienes acceso al módulo de Gestión PAD.');
+    const isAuthorized = IS_LOCALHOST || GESTION_PAD_USERS.includes(userEmail);
+    if (!isAuthorized) {
+      if (!IS_LOCALHOST && msalApp && !msalApp.getAllAccounts().length) {
+        toast('Debes iniciar sesión con tu cuenta IPD para acceder a Gestión PAD.', 'warning');
+        msalApp.loginPopup({ scopes: GRAPH_SCOPES })
+          .then(r => { showApp(r.account); updateAuthUI(); })
+          .catch(() => {});
+      } else {
+        toast('No tienes acceso al módulo de Gestión PAD.', 'error');
+      }
       return;
     }
     if (!online) {
-      alert('La API local no está activa. Inicia el servidor antes de acceder a este módulo.\n\nEjecuta: iniciar_api.vbs');
+      toast('La API local no está activa. Inicia el servidor antes de acceder a este módulo.\n\nEjecuta: iniciar_api.vbs', 'warning');
       return;
     }
   }
@@ -2037,61 +2056,24 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
 });
 
 // ── INIT ──────────────────────────────────────────────────
-function showLoadingMsg(msg) {
-  const el = document.querySelector('#loading-screen div:last-child');
-  if (el) el.textContent = msg;
-}
-
 (async () => {
-  // Localhost: skip MSAL auth — API access is local-only anyway
-  if (IS_LOCALHOST) {
-    showApp({ username: 'localhost' });
-  } else {
-    // Production: require MSAL authentication
-    if (!msalApp) {
-      showLoadingMsg('Error: MSAL no disponible');
-      return;
-    }
-
-    showLoadingMsg('Verificando sesión...');
-    let redirectResponse = null;
+  // Manejar redirect de MSAL si viene de un login previo (no bloqueante)
+  if (msalApp) {
     try {
-      redirectResponse = await msalApp.handleRedirectPromise();
-      if (redirectResponse) console.log('Auth OK:', redirectResponse.account?.username);
+      const rr = await msalApp.handleRedirectPromise();
+      if (rr) console.log('MSAL redirect OK:', rr.account?.username);
     } catch(e) {
-      console.error('handleRedirectPromise error:', e);
-      showLoadingMsg('Error de autenticación: ' + (e.errorCode || e.message));
-      const info = document.createElement('div');
-      info.style.cssText = 'margin-top:8px;font-size:11px;color:rgba(255,255,255,0.5);max-width:400px;word-break:break-all';
-      info.textContent = `redirectUri: ${MSAL_CONFIG.auth.redirectUri} | errorCode: ${e.errorCode} | ${e.errorMessage || ''}`;
-      document.getElementById('loading-screen').appendChild(info);
-      const btnRow = document.createElement('div');
-      btnRow.style.cssText = 'margin-top:16px;display:flex;gap:12px';
-      const btn = document.createElement('button');
-      btn.textContent = 'Reintentar login';
-      btn.style.cssText = 'background:#C8102E;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;cursor:pointer';
-      btn.onclick = () => { localStorage.clear(); sessionStorage.clear(); msalApp.loginRedirect({ scopes: GRAPH_SCOPES }); };
-      btnRow.appendChild(btn);
-      const btn2 = document.createElement('button');
-      btn2.textContent = 'Limpiar caché y recargar';
-      btn2.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.3);padding:10px 24px;border-radius:8px;font-size:13px;cursor:pointer';
-      btn2.onclick = () => { localStorage.clear(); sessionStorage.clear(); location.reload(); };
-      btnRow.appendChild(btn2);
-      document.getElementById('loading-screen').appendChild(btnRow);
-      return;
+      // Error de redirect no es fatal — el usuario puede iniciar sesión con popup
+      console.warn('MSAL redirect (no fatal):', e.errorCode, e.message);
     }
-
-    const accounts = msalApp.getAllAccounts();
-    if (accounts.length === 0) {
-      showLoadingMsg('Redirigiendo a Microsoft...');
-      try { msalApp.loginRedirect({ scopes: GRAPH_SCOPES }); }
-      catch(e) { showLoadingMsg('Error al redirigir: ' + e.message); }
-      return;
-    }
-
-    showApp(accounts[0]);
-    showPage('home', document.querySelector('.nav-item'));
   }
+
+  // Mostrar la app inmediatamente — MSAL es opcional para Consulta PAD
+  const accounts = msalApp?.getAllAccounts() || [];
+  const account = IS_LOCALHOST
+    ? { username: 'localhost' }
+    : (accounts[0] || null);
+  showApp(account);
 
   await checkApi();
   setInterval(checkApi, 30000);
