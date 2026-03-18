@@ -30,7 +30,7 @@ router.get('/activos', async (_req, res) => {
         d.num_documento, d.ap_paterno, d.ap_materno, d.nombres,
         d.sexo, p.cod_tipo_pad, p.cod_nivel, p.cod_estado_pad,
         p.es_permanente, p.fecha_ingreso,
-        n.descripcion AS nivel_desc,
+        n.nombre_nivel AS nivel_desc,
         a.nombre AS asociacion,
         mr.monto_soles,
         CASE WHEN d.num_cuenta IS NULL THEN 'OPE' ELSE 'CUENTA' END AS tipo_giro
@@ -40,7 +40,7 @@ router.get('/activos', async (_req, res) => {
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
       LEFT JOIN pad.montos_referencia mr
         ON mr.cod_nivel = p.cod_nivel
-        AND mr.periodo = FORMAT(GETDATE(), 'yyyyMM')
+        AND FORMAT(GETDATE(), 'yyyyMM') BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
       WHERE p.cod_estado_pad = 'ACT'
       ORDER BY p.cod_tipo_pad, p.cod_nivel, d.ap_paterno, d.ap_materno
     `);
@@ -63,7 +63,7 @@ router.post('/exportar', async (_req, res) => {
              FROM pad.PAD p`),
       query(`SELECT d.ap_paterno+' '+d.ap_materno+', '+d.nombres AS deportista,
                     d.num_documento, p.cod_tipo_pad, p.cod_nivel, p.cod_estado_pad,
-                    n.descripcion AS nivel_desc, a.nombre AS asociacion,
+                    n.nombre_nivel AS nivel_desc, a.nombre AS asociacion,
                     mr.monto_soles
              FROM pad.PAD p
              JOIN pad.Deportistas d ON p.cod_deportista=d.cod_deportista

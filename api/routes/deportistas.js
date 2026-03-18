@@ -28,13 +28,13 @@ router.get('/buscar', async (req, res) => {
     const padResult = await query(
       `SELECT p.cod_pad, p.cod_tipo_pad, p.cod_nivel, p.cod_estado_pad,
               p.es_permanente, p.fecha_ingreso, p.fecha_retiro,
-              n.descripcion AS nivel_desc,
+              n.nombre_nivel AS nivel_desc,
               mr.monto_soles
        FROM pad.PAD p
        JOIN cat.Nivel n ON p.cod_nivel = n.cod_nivel
        LEFT JOIN pad.montos_referencia mr
            ON mr.cod_nivel = p.cod_nivel
-           AND mr.periodo = FORMAT(GETDATE(), 'yyyyMM')
+           AND FORMAT(GETDATE(), 'yyyyMM') BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
        WHERE p.cod_deportista = @cod
        ORDER BY p.cod_estado_pad, p.fecha_ingreso DESC`,
       [{ name: 'cod', type: sql.Int, value: deportista.cod_deportista }]
@@ -109,7 +109,7 @@ router.get('/catalogos', async (_req, res) => {
   try {
     const [asociaciones, niveles, ubigeo_sample] = await Promise.all([
       query(`SELECT cod_asociacion, nombre FROM pad.Asociacion_Deportiva ORDER BY nombre`),
-      query(`SELECT cod_nivel, descripcion, cod_tipo_pad, activo FROM cat.Nivel WHERE activo = 1 ORDER BY cod_tipo_pad, cod_nivel`),
+      query(`SELECT cod_nivel, nombre_nivel AS descripcion, cod_tipo_pad, activo FROM cat.Nivel WHERE activo = 1 ORDER BY cod_tipo_pad, cod_nivel`),
       query(`SELECT TOP 0 cod_ubigeo FROM cat.ubigeo`), // just to confirm table exists
     ]);
     res.json({
