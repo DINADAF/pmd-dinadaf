@@ -127,7 +127,7 @@ tr:hover td{background:var(--surface2)}
 </head>
 <body>
 
-<div class="sidebar">
+<div class="sidebar" style="display:none">
   <div class="sidebar-header">
     <h1>Plataforma PMD</h1>
     <p>UF-PMD / DINADAF / IPD</p>
@@ -157,7 +157,21 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
-<div class="main">
+<!-- LOGIN GATE — shown when no MSAL session -->
+<div id="login-gate" style="display:none;position:fixed;inset:0;background:#0F2B1F;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px">
+  <div style="text-align:center;color:#fff">
+    <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px">UF-PMD / DINADAF / IPD</div>
+    <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px">Plataforma PMD</h1>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px">Acceso restringido al personal de la UF-PMD</p>
+  </div>
+  <button id="btn-login-gate" onclick="msalSignIn()" style="background:#1D6B4F;color:#fff;border:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:0.2px">
+    Iniciar sesion con cuenta IPD
+  </button>
+  <div id="login-error" style="color:#f87171;font-size:12px;display:none"></div>
+  <div style="color:rgba(255,255,255,0.25);font-size:11px">v1.0 &middot; Directiva 003-2025-IPD/DINADAF</div>
+</div>
+
+<div class="main" id="main-app" style="display:none">
   <div class="offline-bar" id="offline-bar">&#9888; Modulo de gestion no disponible &mdash; API local inactiva. Solo visualizacion de datos exportados.</div>
   <div class="topbar">
     <span class="topbar-title" id="page-title">Dashboard</span>
@@ -529,7 +543,7 @@ const MSAL_CONFIG = {
     authority: 'https://login.microsoftonline.com/19ccc9d6-ff9b-4dc4-914e-f195773cb1a2',
     redirectUri: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/'),
   },
-  cache: { cacheLocation: 'sessionStorage' }
+  cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
 };
 const DRIVE_ID = 'b!T9pa18s7Q0ucS14QcR9bATc7WiT-ztVPqEwNfjLw_AOIF3HTHWRESYYKCB6vvSs0';
 const GRAPH_SCOPES = ['https://graph.microsoft.com/Files.Read'];
@@ -569,9 +583,32 @@ function updateAuthUI() {
 async function msalSignIn() {
   if (!msalApp) return;
   const accounts = msalApp.getAllAccounts();
-  if (accounts.length > 0) return; // already signed in
-  try { await msalApp.loginPopup({ scopes: GRAPH_SCOPES }); updateAuthUI(); await loadDashboard(); }
-  catch(e) { console.warn('Sign in cancelled or failed:', e.message); }
+  if (accounts.length > 0) { showApp(); return; }
+  const errEl = document.getElementById('login-error');
+  if (errEl) errEl.style.display = 'none';
+  try {
+    await msalApp.loginPopup({ scopes: GRAPH_SCOPES });
+    showApp();
+    await checkApi();
+    await loadDashboard();
+    if (online) await loadCats();
+    updateAuthUI();
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'No se pudo iniciar sesion. Intenta nuevamente.'; errEl.style.display = 'block'; }
+    console.warn('Sign in failed:', e.message);
+  }
+}
+
+function showApp() {
+  document.getElementById('login-gate').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  document.querySelector('.sidebar').style.display = 'flex';
+}
+
+function showLoginGate() {
+  document.getElementById('login-gate').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+  document.querySelector('.sidebar').style.display = 'none';
 }
 
 // ── API CHECK ──────────────────────────────────────────────
@@ -941,6 +978,14 @@ if (inp) inp.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'
   if (msalApp) {
     try { await msalApp.handleRedirectPromise(); } catch {}
   }
+  const accounts = msalApp?.getAllAccounts() || [];
+  if (accounts.length === 0) {
+    // No active session — show login gate, hide everything else
+    showLoginGate();
+    return;
+  }
+  // Authenticated — show app
+  showApp();
   await checkApi();
   await loadDashboard();
   if (online) await loadCats();
