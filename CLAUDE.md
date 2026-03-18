@@ -1,8 +1,8 @@
-# PAD Data System — DINADAF/IPD
+# PMD Platform — UF-PMD / DINADAF / IPD
 
 > **Read DESIGN_CONTEXT.md in the project root** for architectural decisions, design context, and the rationale behind every decision.
 
-Sports subsidy program (PAD) database for Peru's Instituto Peruano del Deporte (IPD). Transforms Excel-based data management into a relational SQL Server system with formal data governance (DAMA-DMBOK framework).
+**Plataforma PMD** is the data management platform for the Unidad Funcional de Gestión de Planificación y Metodología Deportiva (UF-PMD), under DINADAF at Peru's Instituto Peruano del Deporte (IPD). Its first module is the **PAD module**: a SQL Server database for the sports subsidy program (Programa de Apoyo al Deportista), replacing Excel-based management with a relational system under the DAMA-DMBOK framework. Additional modules for the UF-PMD area are planned.
 
 ## Stack
 - Database: SQL Server 2025 Express (instance: `localhost\SQLEXPRESS`)
@@ -99,7 +99,7 @@ Three schemas following DAMA data taxonomy:
 ## Operational Context
 
 ### Users
-- **Ruben** — System admin and primary data entry user. Reads physical/digital expedientes from SGD and enters all PAD movements.
+- **Ruben** — Data analyst at UF-PMD. System admin and primary data entry user. Reads physical/digital expedientes from SGD and enters all PAD movements. Works alongside Sports Specialists (Especialistas Deportivos) who evaluate PAD change expedientes and issue technical reports.
 - **Claudia** — Handles SQL queries and stored procedures. Does not perform data entry.
 
 ### Monthly Workflow
@@ -156,8 +156,23 @@ Internal (Tesorería):
 
 ## Project Files
 - `sql/` — All SQL scripts (DDL, DML, ETL, queries)
-- `data/` — Source Excel files (reference only)
-- `docs/` — Directiva PDF/DOCX, DAMA-DMBOK, report samples
+- `data/` — Source Excel files (reference only, gitignored)
+- `docs/` — Directiva PDF/DOCX, DAMA-DMBOK, report samples (gitignored)
+- `api/` — Node.js/Express local API (port 3001); connects to SQL Server Express
+  - `server.js` — Entry point; CORS allows localhost + *.github.io
+  - `db.js` — mssql connection pool (dotenv config)
+  - `routes/deportistas.js` — Search/create athletes, update bank accounts, get catalogs
+  - `routes/movimientos.js` — Register ING/CAMBNIV/RET in single transaction; GET recientes
+  - `routes/reportes.js` — KPI aggregates, active athletes list, export to web/data/
+  - `.env` — DB credentials (gitignored; use .env.example as template)
+- `web/` — GitHub Pages frontend (public, no sensitive data)
+  - `index.html` — Main SPA; DM Sans + JetBrains Mono; sidebar #0F2B1F
+  - `css/styles.css` — Design system (tokens: --accent #1D6B4F, badges, cards)
+  - `js/api-client.js` — HTTP client; detects local API with 2.5s timeout
+  - `js/app.js` — Main app logic; tabs, modals, ING/CAMBNIV/RET forms
+  - `js/dashboard.js` — KPI cards, movements table, summary charts
+  - `data/` — JSON exports from API (gitignored; will flow via SharePoint)
+- `.github/workflows/pages.yml` — Deploys web/ to GitHub Pages on push to master
 - `DESIGN_CONTEXT.md` — Design decisions, architecture, project history
 - `CLAUDE.md` — This file (keep in English, update frequently)
 
@@ -172,6 +187,8 @@ Internal (Tesorería):
 - Validate structural changes with Ruben before implementing
 
 ## Current Status (March 2026)
+
+### Database ✅
 - ✅ 15 tables created and validated
 - ✅ 8 gold views created and validated
 - ✅ All catalogs loaded (ubigeo, niveles, asociaciones, montos 2013-2026)
@@ -182,16 +199,50 @@ Internal (Tesorería):
 - ✅ Financial validation: S/ 101,138,080.40 total historical 2013-2026
 - ✅ num_cuenta loaded from "matriz de cuentas 2020 a 2026_pad.xlsx"
 - ✅ Apoderados loaded from "Relación de menores de edad"
-- ⚠️ BUG: Deportistas.activo shows 2,011 active instead of 273. Fix: UPDATE needs explicit alias (UPDATE d FROM pad.Deportistas d WHERE EXISTS (...p.cod_deportista = d.cod_deportista...))
-- ⏸️ NEXT: Stored procedures (sp_registrar_ingreso, sp_registrar_retiro, sp_registrar_cambniv)
-- ⏸️ NEXT: "Cambios PAD" data entry form — web interface (architecture TBD: local API + GitHub Pages vs. full local)
-- ⏸️ NEXT: GitHub repository setup + SharePoint/OneDrive integration for report distribution
-- ⏸️ PENDING: LES/LSS states — 0 records currently (expected if no active injured athletes)
-- ⏸️ PENDING: Cambios PAD 2013 — source file not found
+- ⚠️ BUG PENDING: Deportistas.activo shows 2,011 active instead of 273
+  - Fix: `UPDATE d SET activo = 0 FROM pad.Deportistas d WHERE NOT EXISTS (SELECT 1 FROM pad.PAD p WHERE p.cod_deportista = d.cod_deportista AND p.cod_estado_pad = 'ACT');`
+  - Also needs: `UPDATE d SET activo = 1 FROM pad.Deportistas d WHERE EXISTS (SELECT 1 FROM pad.PAD p WHERE p.cod_deportista = d.cod_deportista AND p.cod_estado_pad = 'ACT');`
+  - Then verify: `SELECT COUNT(*) FROM pad.Deportistas WHERE activo = 1;` (should be 273)
+
+### Local API ✅
+- ✅ Node.js/Express API running on port 3001 (api/ directory)
+- ✅ Routes: /api/deportistas, /api/movimientos, /api/reportes
+- ✅ Single-transaction POST /api/movimientos handles ING/CAMBNIV/RET
+- ✅ GET /api/movimientos/recientes — last 50 movements
+- ✅ POST /api/reportes/exportar — exports JSON to web/data/
+- ✅ CORS configured for localhost + *.github.io
+
+### Web Platform ✅
+- ✅ GitHub organization created: DINADAF (dinadaf@ipd.gob.pe); rencisov added as co-owner
+- ✅ GitHub Pages repo: dinadaf/pmd-dinadaf → https://dinadaf.github.io/pmd-dinadaf/
+- ✅ web/ frontend deployed: Dashboard, Deportistas, Cambios PAD, Consolidados tabs
+- ✅ Two-module architecture: Module 1 (dashboard, always available) + Module 2 (data entry, only when local API active)
+- ✅ API status indicator: green dot = online, gray = offline; offline banner shown
+- ✅ Security: web/data/*.json gitignored — sensitive data never in public repo
+- ✅ Design system: DM Sans + JetBrains Mono, accent #1D6B4F, sidebar #0F2B1F
+- ✅ Badges: ACT (green), LES (amber), LSS (blue), RET (gray), PAD1/PAD2/PNM
+- ✅ Forms: Cambios PAD (ING/CAMBNIV/RET), Nuevo Deportista (with apoderado section), Número de cuenta
+
+### SharePoint Integration 🔄 IN PROGRESS
+- 🔄 Azure AD app registration in progress (dinadaf@ipd.gob.pe — "Usuario" role, not admin)
+- 🔄 Tenant: IPD PERU S.A.C. (IPD.GOB.PE), ID: 19ccc9d6-ff9b-4dc4-914e-f195773cb1a2, free Entra ID tier
+- ⏸️ NEXT: Verify if "Usuario" role can register apps; if not, coordinate with IPD IT admin
+- ⏸️ NEXT: If app registered → grant Microsoft Graph Files.Read.All permission → update web/ to auth via MSAL.js
+- ⏸️ NEXT: Build export pipeline: API exports JSON → auto-uploads to SharePoint (Microsoft Graph PUT)
+- ⏸️ ALTERNATIVE: If Azure AD blocked → use anonymous SharePoint sharing link (simpler, less secure)
+
+### Pending
+- ⏸️ Stored procedures: sp_registrar_ingreso, sp_registrar_retiro, sp_registrar_cambniv (API handles this logic directly for now)
+- ⏸️ LES/LSS states: 0 records currently (expected; system ready when needed)
+- ⏸️ Cambios PAD 2013: source file not found
+- ⏸️ Giros module: placeholder in web/ (low priority)
+- ⏸️ Montos module: placeholder in web/ (low priority)
+
+### Future
 - ⏸️ FUTURE: Automated PDF report generation from gold views
-- ⏸️ FUTURE: Export pipeline SQL Server → JSON/CSV → SharePoint/OneDrive
-- ⏸️ FUTURE: Web dashboard (Power BI + possible GitHub Pages)
+- ⏸️ FUTURE: Power BI dashboard reading from SharePoint
 - ⏸️ FUTURE: Clickable ruta_documento from dashboard
+- ⏸️ FUTURE: Power Automate flows for area team notifications
 
 ## Migration Notes
 - Authoritative source: PAD - BD.xlsx (sheet: matriz_pad) — 2,011 athletes, 70,389 executions

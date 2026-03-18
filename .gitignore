@@ -9,6 +9,7 @@ docs/*.docx
 # Environment variables (DB credentials)
 api/.env
 api/node_modules/
+api/.token-cache.json
 
 # Python
 __pycache__/

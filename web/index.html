@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema PAD - DINADAF/IPD</title>
+<title>Plataforma PMD - DINADAF/IPD</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -128,8 +129,8 @@ tr:hover td{background:var(--surface2)}
 
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>Sistema PAD</h1>
-    <p>DINADAF / IPD</p>
+    <h1>Plataforma PMD</h1>
+    <p>UF-PMD / DINADAF / IPD</p>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">
@@ -151,6 +152,7 @@ tr:hover td{background:var(--surface2)}
   </nav>
   <div class="sidebar-footer">
     <div class="api-status"><span class="api-dot" id="api-dot"></span><span id="api-txt">Verificando...</span></div>
+    <button id="btn-signin" onclick="msalSignIn()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:10px;cursor:pointer;padding:4px 0;text-align:left;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">⬡ Iniciar sesión</button>
     v1.0 &middot; Directiva 003-2025
   </div>
 </div>
@@ -520,6 +522,58 @@ let depData = [];
 let depFilter = '';
 let depSel = null;
 
+// ── MSAL / ONEDRIVE ────────────────────────────────────────
+const MSAL_CONFIG = {
+  auth: {
+    clientId: '4ebfc360-a6b5-4330-8a73-682768a95b64',
+    authority: 'https://login.microsoftonline.com/19ccc9d6-ff9b-4dc4-914e-f195773cb1a2',
+    redirectUri: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/'),
+  },
+  cache: { cacheLocation: 'sessionStorage' }
+};
+const DRIVE_ID = 'b!T9pa18s7Q0ucS14QcR9bATc7WiT-ztVPqEwNfjLw_AOIF3HTHWRESYYKCB6vvSs0';
+const GRAPH_SCOPES = ['https://graph.microsoft.com/Files.Read'];
+let msalApp = null;
+try { msalApp = new msal.PublicClientApplication(MSAL_CONFIG); } catch(e) { console.warn('MSAL init failed:', e.message); }
+
+async function getMsalToken() {
+  if (!msalApp) return null;
+  const accounts = msalApp.getAllAccounts();
+  if (!accounts.length) return null;
+  try {
+    const r = await msalApp.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: accounts[0] });
+    return r.accessToken;
+  } catch { return null; }
+}
+
+async function oneDriveJson(filename) {
+  const token = await getMsalToken();
+  if (!token) return null;
+  try {
+    const url = `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/root:/pad-data/${filename}:/content`;
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    return r.ok ? r.json() : null;
+  } catch { return null; }
+}
+
+function updateAuthUI() {
+  const accounts = msalApp?.getAllAccounts() || [];
+  const signed = accounts.length > 0;
+  const btn = document.getElementById('btn-signin');
+  if (btn) {
+    btn.textContent = signed ? ('● ' + accounts[0].username) : '⬡ Iniciar sesión';
+    btn.title = signed ? 'Sesión activa — datos OneDrive disponibles' : 'Iniciar sesión para ver datos en modo offline';
+  }
+}
+
+async function msalSignIn() {
+  if (!msalApp) return;
+  const accounts = msalApp.getAllAccounts();
+  if (accounts.length > 0) return; // already signed in
+  try { await msalApp.loginPopup({ scopes: GRAPH_SCOPES }); updateAuthUI(); await loadDashboard(); }
+  catch(e) { console.warn('Sign in cancelled or failed:', e.message); }
+}
+
 // ── API CHECK ──────────────────────────────────────────────
 async function checkApi() {
   try {
@@ -554,6 +608,9 @@ async function apiPost(path, body) {
   return j;
 }
 async function staticJson(f) {
+  // Try OneDrive first (requires MSAL auth), then fall back to local static file
+  const od = await oneDriveJson(f);
+  if (od) return od;
   try { const r = await fetch('./data/' + f); return r.ok ? r.json() : null; } catch { return null; }
 }
 
@@ -874,9 +931,13 @@ if (inp) inp.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'
 
 // ── INIT ──────────────────────────────────────────────────
 (async () => {
+  if (msalApp) {
+    try { await msalApp.handleRedirectPromise(); } catch {}
+  }
   await checkApi();
   await loadDashboard();
   if (online) await loadCats();
+  updateAuthUI();
   setInterval(checkApi, 30000);
 })();
 </script>

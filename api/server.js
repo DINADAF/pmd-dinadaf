@@ -37,6 +37,6 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`PAD-IPD API corriendo en http://localhost:${PORT}`);
+  console.log(`PMD Platform API corriendo en http://localhost:${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
 });
