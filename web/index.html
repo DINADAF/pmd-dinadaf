@@ -992,24 +992,31 @@ function showLoadingMsg(msg) {
   }
 
   showLoadingMsg('Verificando sesion...');
+  let redirectError = null;
   try {
-    // Race handleRedirectPromise with a 5s timeout
-    await Promise.race([
-      msalApp.handleRedirectPromise(),
-      new Promise((_,rej) => setTimeout(() => rej(new Error('timeout')), 5000))
-    ]);
+    const response = await msalApp.handleRedirectPromise();
+    if (response) console.log('Redirect response received:', response.account?.username);
   } catch(e) {
-    if (e.message !== 'timeout') console.warn('handleRedirectPromise error:', e);
+    redirectError = e;
+    console.error('handleRedirectPromise error:', e);
+  }
+
+  if (redirectError) {
+    showLoadingMsg('Error de autenticacion: ' + (redirectError.errorCode || redirectError.message));
+    // Show retry button
+    const btn = document.createElement('button');
+    btn.textContent = 'Reintentar login';
+    btn.style.cssText = 'margin-top:16px;background:#1D6B4F;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;cursor:pointer';
+    btn.onclick = () => msalApp.loginRedirect({ scopes: GRAPH_SCOPES });
+    document.getElementById('loading-screen').appendChild(btn);
+    return;
   }
 
   const accounts = msalApp.getAllAccounts();
   if (accounts.length === 0) {
-    showLoadingMsg('Redirigiendo al login de Microsoft...');
-    try {
-      msalApp.loginRedirect({ scopes: GRAPH_SCOPES });
-    } catch(e) {
-      showLoadingMsg('Error al redirigir: ' + e.message);
-    }
+    showLoadingMsg('Redirigiendo a Microsoft...');
+    try { msalApp.loginRedirect({ scopes: GRAPH_SCOPES }); }
+    catch(e) { showLoadingMsg('Error al redirigir: ' + e.message); }
     return;
   }
 
