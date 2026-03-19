@@ -1637,8 +1637,8 @@ async function descargarReporte(format, report, selId) {
     try {
       const perList = await apiGet('/api/movimientos/periodos');
       const pData = perList.find(p => p.periodo === periodo);
-      if (!pData || pData.cerrado !== 1) {
-        alert(`❌ El periodo ${periodo} no está cerrado.\nSolo se pueden generar consolidados de periodos finalizados y cerrados en Cambio PAD.`);
+      if (!pData || !pData.cerrado) {
+        alert(`❌ El periodo ${periodo.slice(0,4)}-${periodo.slice(4,6)} no está cerrado.\nSolo se pueden generar consolidados de periodos finalizados y cerrados en Cambio PAD.`);
         return;
       }
     } catch(e) {
@@ -2157,13 +2157,37 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target===m) m.classList.remove('show'); });
 });
 
-// Set default periods
+// Set default periods — regular inputs get current month
 const now = new Date();
 const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-['inp-periodo','inp-periodo-cambios','inp-periodo-giro','inp-periodo-cons-tec','inp-periodo-cons-eco'].forEach(id => {
+['inp-periodo','inp-periodo-cambios','inp-periodo-giro'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.value = defPer;
 });
+
+// Consolidado selectors: default to last CLOSED period from server
+(async () => {
+  try {
+    if (online) {
+      const perList = await apiGet('/api/movimientos/periodos');
+      const lastClosed = perList.find(p => p.cerrado);
+      if (lastClosed) {
+        const lc = lastClosed.periodo;
+        const lcFmt = lc.slice(0,4) + '-' + lc.slice(4,6);
+        ['inp-periodo-cons-tec','inp-periodo-cons-eco'].forEach(id => {
+          const el = document.getElementById(id); if (el) el.value = lcFmt;
+        });
+        return;
+      }
+    }
+  } catch(e) { /* fallback below */ }
+  // Fallback: previous month
+  const prev = new Date(); prev.setMonth(prev.getMonth()-1);
+  const prevFmt = prev.getFullYear()+'-'+String(prev.getMonth()+1).padStart(2,'0');
+  ['inp-periodo-cons-tec','inp-periodo-cons-eco'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = prevFmt;
+  });
+})();
 
 // ── INIT ──────────────────────────────────────────────────
 (async () => {
