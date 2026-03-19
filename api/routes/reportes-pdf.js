@@ -339,7 +339,8 @@ router.get('/consolidado-tecnico', async (req, res) => {
     doc.flushPages();
     doc.end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -435,7 +436,8 @@ router.get('/consolidado-economico', async (req, res) => {
     doc.flushPages();
     doc.end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -567,7 +569,8 @@ router.get('/cambios-pad', async (req, res) => {
     doc.flushPages();
     doc.end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

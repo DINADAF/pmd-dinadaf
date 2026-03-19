@@ -21,6 +21,15 @@ router.post('/', async (req, res) => {
     cod_resultado,
   } = req.body;
 
+  if (!tipo_movimiento || !['ING', 'CAMBNIV', 'RET'].includes(tipo_movimiento))
+    return res.status(400).json({ error: 'tipo_movimiento debe ser ING, CAMBNIV o RET' });
+  if (!cod_deportista || !Number.isInteger(cod_deportista) || cod_deportista <= 0)
+    return res.status(400).json({ error: 'cod_deportista inválido' });
+  if (tipo_movimiento === 'ING' && (!cod_tipo_pad || !cod_nivel))
+    return res.status(400).json({ error: 'ING requiere cod_tipo_pad y cod_nivel' });
+  if (tipo_movimiento === 'CAMBNIV' && !cod_nivel)
+    return res.status(400).json({ error: 'CAMBNIV requiere cod_nivel' });
+
   const pool = await getPool();
   const transaction = new sql.Transaction(pool);
 
@@ -137,8 +146,9 @@ router.post('/', async (req, res) => {
     res.json({ ok: true, cod_pad, cod_cambio });
 
   } catch (err) {
-    await transaction.rollback();
-    res.status(500).json({ error: err.message });
+    await transaction.rollback().catch(() => {});
+    console.error(err);
+    res.status(500).json({ error: 'Error al registrar movimiento' });
   }
 });
 
@@ -165,7 +175,8 @@ router.get('/recientes', async (req, res) => {
     );
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -189,7 +200,8 @@ router.get('/periodos', async (req, res) => {
     );
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -224,7 +236,8 @@ router.get('/periodo/:periodo', async (req, res) => {
     );
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -247,7 +260,8 @@ router.post('/periodos/:periodo/cerrar', async (req, res) => {
                 VALUES (@periodo, 1, GETDATE(), @usuario, @notas);`);
     res.json({ ok: true, periodo, cerrado: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -263,7 +277,8 @@ router.post('/periodos/:periodo/reabrir', async (req, res) => {
               WHERE periodo=@periodo`);
     res.json({ ok: true, periodo, cerrado: false });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

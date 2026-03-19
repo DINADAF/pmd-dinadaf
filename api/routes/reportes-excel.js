@@ -177,7 +177,8 @@ router.get('/giro', async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -253,7 +254,8 @@ router.get('/consolidado-tecnico', async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

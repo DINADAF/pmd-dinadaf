@@ -42,7 +42,8 @@ router.get('/buscar', async (req, res) => {
 
     res.json({ found: true, deportista, pad_records: padResult.recordset });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -53,6 +54,13 @@ router.post('/', async (req, res) => {
     sexo, fecha_nac, cod_asociacion, cod_ubigeo, num_cuenta,
     correo, telefono, agrupacion
   } = req.body;
+
+  if (!num_documento || !ap_paterno || !nombres)
+    return res.status(400).json({ error: 'Campos requeridos: num_documento, ap_paterno, nombres' });
+  if (sexo && !['M', 'F'].includes(sexo))
+    return res.status(400).json({ error: 'sexo debe ser M o F' });
+  if (tipo_documento && !['DNI', 'CE', 'PAS', 'OTR'].includes(tipo_documento))
+    return res.status(400).json({ error: 'tipo_documento debe ser DNI, CE, PAS o OTR' });
 
   try {
     const result = await query(
@@ -83,7 +91,8 @@ router.post('/', async (req, res) => {
     );
     res.json({ cod_deportista: result.recordset[0].cod_deportista });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -100,7 +109,8 @@ router.patch('/:cod/cuenta', async (req, res) => {
     );
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -117,7 +127,8 @@ router.get('/:cod(\\d+)', async (req, res) => {
     if (!result.recordset.length) return res.status(404).json({ error: 'No encontrado' });
     res.json(result.recordset[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -164,7 +175,8 @@ router.put('/:cod(\\d+)', async (req, res) => {
     );
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -177,7 +189,8 @@ router.get('/organizaciones/lista', async (_req, res) => {
     );
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -204,7 +217,8 @@ router.put('/organizaciones/:cod(\\d+)', async (req, res) => {
     );
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -221,7 +235,8 @@ router.get('/catalogos', async (_req, res) => {
       niveles: niveles.recordset,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

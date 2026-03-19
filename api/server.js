@@ -26,7 +26,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PATCH', 'PUT'],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Serve Gestion PAD frontend (web/ directory)
 app.use(express.static(path.join(__dirname, '../web')));

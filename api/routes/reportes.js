@@ -24,7 +24,8 @@ router.get('/kpi', async (_req, res) => {
     `);
     res.json(result.recordset[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -52,7 +53,8 @@ router.get('/activos', async (_req, res) => {
     `);
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -128,7 +130,8 @@ router.post('/exportar', async (_req, res) => {
       registros: activosR.recordset.length,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
