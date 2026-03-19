@@ -190,7 +190,7 @@ function drawTotalRow(doc, leftLabel, rightLabel, y, tableW, mL) {
 // ── needNewPage factory ───────────────────────────────────────────────────────
 function makeNeedNewPage(doc, titulo, subtitulo, codigo, pageH, mB, yRef, periodoGrande) {
   return function(needed) {
-    if (yRef.y + needed > pageH - mB - FOOTER_H) {
+    if (yRef.y + needed > pageH - mB - 25) {
       doc.addPage();
       yRef.y = drawHeader3col(doc, titulo, subtitulo, codigo, periodoGrande);
     }
@@ -204,6 +204,11 @@ router.get('/consolidado-tecnico', async (req, res) => {
   try {
     const tipo    = req.query.tipo    || 'PAD1';
     const periodo = req.query.periodo || currentPeriodo();
+
+    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
+    if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
+      return res.status(403).send(`<h1>Acceso Denegado</h1><p>El periodo ${periodo} no esta cerrado. Solo se pueden emitir consolidados de periodos cerrados.</p>`);
+    }
 
     const movResult = await query(`
       SELECT c.cod_tip_mov, c.nivel_anterior, c.nivel_nuevo,
@@ -256,8 +261,8 @@ router.get('/consolidado-tecnico', async (req, res) => {
 
     const doc = new PDFDocument({
       size: 'A4', layout: 'portrait',
-      margins: { top: mT, bottom: mB, left: mL, right: mR },
-      bufferPages: true,
+      margins: { top: mT, bottom: 10, left: mL, right: mR },
+      autoFirstPage: true, bufferPages: true,
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -313,23 +318,36 @@ router.get('/consolidado-tecnico', async (req, res) => {
       yRef.y = drawDataRow(doc, columns, r, yRef.y, i, mL, 14, sp);
     });
 
-    // Resumen por nivel
+    // Resumen por Federación y Nivel
     yRef.y += 12;
     needNewPage(16 + 16 + 14);
-    yRef.y = drawSectionBanner(doc, 'RESUMEN POR NIVEL', yRef.y, tableW, mL);
-    const resumCols = [
-      { label: 'NIVEL',    width: 100, key: '_niv', align: 'center' },
-      { label: 'CANTIDAD', width:  80, key: '_cnt', align: 'center' },
-    ];
+    yRef.y = drawSectionBanner(doc, 'RESUMEN POR FEDERACIÓN Y NIVEL', yRef.y, tableW, mL);
+    
+    const levels = [...new Set(activoRows.map(r => r.cod_nivel))].sort();
+    const resumCols = [ { label: 'FEDERACIÓN', width: 225, key: 'fed' } ];
+    levels.forEach(lv => resumCols.push({ label: lv, width: 45, key: lv, align: 'center' }));
+    resumCols.push({ label: 'TOTAL', width: 65, key: 'total', align: 'center' });
+
     yRef.y = drawColHeader(doc, resumCols, yRef.y, mL);
-    const nivelGroup = {};
-    activoRows.forEach(r => { nivelGroup[r.cod_nivel] = (nivelGroup[r.cod_nivel] || 0) + 1; });
-    Object.entries(nivelGroup).sort().forEach(([niv, cnt], i) => {
-      needNewPage(14);
-      yRef.y = drawDataRow(doc, resumCols, { _niv: niv, _cnt: cnt }, yRef.y, i, mL, 14, []);
+    const fedGroup = {};
+    activoRows.forEach(r => {
+      const f = r.asociacion || '(Sin Asignar)';
+      if (!fedGroup[f]) fedGroup[f] = { fed: f, total: 0 };
+      fedGroup[f][r.cod_nivel] = (fedGroup[f][r.cod_nivel] || 0) + 1;
+      fedGroup[f].total++;
     });
-    needNewPage(16);
-    drawTotalRow(doc, `Total: ${activoRows.length} deportistas activos`, '', yRef.y, tableW, mL);
+
+    Object.values(fedGroup).sort((a, b) => a.fed.localeCompare(b.fed)).forEach((fedData, i) => {
+      needNewPage(14);
+      levels.forEach(lv => { if (!fedData[lv]) fedData[lv] = '-'; });
+      yRef.y = drawDataRow(doc, resumCols, fedData, yRef.y, i, mL, 14, []);
+    });
+    
+    // Total general al final (solo si hay al menos un activo)
+    if (activoRows.length > 0) {
+      needNewPage(16);
+      drawTotalRow(doc, `Total: ${activoRows.length} deportistas activos`, '', yRef.y, tableW, mL);
+    }
 
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {
@@ -351,6 +369,11 @@ router.get('/consolidado-economico', async (req, res) => {
   try {
     const tipo    = req.query.tipo    || 'PAD1';
     const periodo = req.query.periodo || currentPeriodo();
+
+    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
+    if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
+      return res.status(403).send(`<h1>Acceso Denegado</h1><p>El periodo ${periodo} no esta cerrado. Solo se pueden emitir consolidados de periodos cerrados.</p>`);
+    }
 
     const result = await query(`
       SELECT d.num_documento, d.ap_paterno, d.ap_materno, d.nombres,
@@ -382,27 +405,27 @@ router.get('/consolidado-economico', async (req, res) => {
     const subtitulo = `PROGRAMA DE APOYO AL DEPORTISTA ${subtipoLabel} - ${periodoLabel(periodo).toUpperCase()}`;
     const codigo    = 'SUB-FO-26';
     const mL = 30, mT = 40, mB = 30, mR = 30;
-    const pageH = 595.28; // A4 landscape height
+    const pageH = 841.89; // A4 portrait height
 
-    // Landscape usable: 841.89 - 60 ≈ 781
+    // Portrait usable width: 515pt
     const columns = [
-      { label: 'Nº',             width:  22, key: '_n',          align: 'center' },
-      { label: 'FEDERACIÓN',     width: 110, key: 'asociacion' },
-      { label: 'DEPORTISTA',     width: 158, value: r => `${r.ap_paterno} ${r.ap_materno}, ${r.nombres}` },
-      { label: 'NRO. DE CUENTA', width: 100, value: r => r.num_cuenta || 'OPE', align: 'center' },
-      { label: 'NRO. DOC.',      width:  65, key: 'num_documento', align: 'center' },
-      { label: 'APODERADO',      width: 148, value: r => r.es_menor && r.apo_paterno
+      { label: 'Nº',             width:  15, key: '_n',          align: 'center' },
+      { label: 'FEDERACIÓN',     width:  80, key: 'asociacion' },
+      { label: 'DEPORTISTA',     width: 100, value: r => `${r.ap_paterno} ${r.ap_materno}, ${r.nombres}` },
+      { label: 'NRO. DE CUENTA', width:  65, value: r => r.num_cuenta || 'OPE', align: 'center' },
+      { label: 'NRO. DOC.',      width:  50, key: 'num_documento', align: 'center' },
+      { label: 'APODERADO',      width:  80, value: r => r.es_menor && r.apo_paterno
           ? `${r.apo_paterno} ${r.apo_materno||''}, ${r.apo_nombres||''}`.trim() : '' },
-      { label: 'DNI APO.',       width:  60, value: r => r.es_menor && r.apo_documento ? r.apo_documento : '', align: 'center' },
-      { label: 'NIVEL',          width:  50, key: 'cod_nivel',   align: 'center' },
-      { label: 'MONTO',          width:  68, value: r => formatSoles(r.monto_soles), align: 'right' },
+      { label: 'DNI APO.',       width:  45, value: r => r.es_menor && r.apo_documento ? r.apo_documento : '', align: 'center' },
+      { label: 'NIVEL',          width:  35, key: 'cod_nivel',   align: 'center' },
+      { label: 'MONTO',          width:  45, value: r => formatSoles(r.monto_soles), align: 'right' },
     ];
-    const tableW = columns.reduce((s, c) => s + c.width, 0); // 781
+    const tableW = columns.reduce((s, c) => s + c.width, 0); // 515
 
     const doc = new PDFDocument({
-      size: 'A4', layout: 'landscape',
-      margins: { top: mT, bottom: mB, left: mL, right: mR },
-      bufferPages: true,
+      size: 'A4', layout: 'portrait',
+      margins: { top: mT, bottom: 10, left: mL, right: mR },
+      autoFirstPage: true, bufferPages: true,
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -503,8 +526,8 @@ router.get('/cambios-pad', async (req, res) => {
 
     const doc = new PDFDocument({
       size: 'A4', layout: 'landscape',
-      margins: { top: mT, bottom: mB, left: mL, right: mR },
-      bufferPages: true,
+      margins: { top: mT, bottom: 10, left: mL, right: mR },
+      autoFirstPage: true, bufferPages: true,
     });
 
     res.setHeader('Content-Type', 'application/pdf');

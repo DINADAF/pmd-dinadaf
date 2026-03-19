@@ -197,8 +197,9 @@ function xlHeaderRow(ws, headers) {
     c.font = { bold: true, color: { argb: XL.headerText }, size: 8 };
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL.headerBg } };
     c.alignment = { horizontal: 'center', vertical: 'middle' };
+    c.border = { top: { style: 'thin', color: { argb: 'CCCCCC' } }, bottom: { style: 'thin', color: { argb: 'CCCCCC' } }, left: { style: 'thin', color: { argb: 'CCCCCC' } }, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
   });
-  hRow.height = 16;
+  hRow.height = 18;
   return hRow;
 }
 
@@ -215,11 +216,12 @@ function xlSectionBanner(ws, label, colCount) {
 function xlDataRow(ws, values, idx) {
   const row = ws.addRow(values);
   row.eachCell(c => {
-    c.font = { size: 8 };
-    c.alignment = { vertical: 'middle' };
+    c.font = { size: 8, color: { argb: '000000' } };
+    c.alignment = { vertical: 'middle', wrapText: true };
     if (idx % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL.rowEven } };
+    c.border = { top: { style: 'thin', color: { argb: 'CCCCCC' } }, bottom: { style: 'thin', color: { argb: 'CCCCCC' } }, left: { style: 'thin', color: { argb: 'CCCCCC' } }, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
   });
-  row.height = 14;
+  row.height = 16;
   return row;
 }
 
@@ -229,17 +231,63 @@ function xlTotalRow(ws, values, colCount) {
     c.font = { bold: true, color: { argb: XL.headerText }, size: 8 };
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL.totalBg } };
     c.alignment = { vertical: 'middle' };
+    c.border = { top: { style: 'thin', color: { argb: 'CCCCCC' } }, bottom: { style: 'thin', color: { argb: 'CCCCCC' } }, left: { style: 'thin', color: { argb: 'CCCCCC' } }, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
   });
-  // Fill empty cells with total background
   for (let i = 1; i <= colCount; i++) {
     const c = row.getCell(i);
     if (!c.fill || !c.fill.fgColor) {
       c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL.totalBg } };
       c.font = { bold: true, color: { argb: XL.headerText }, size: 8 };
+      c.border = { top: { style: 'thin', color: { argb: 'CCCCCC' } }, bottom: { style: 'thin', color: { argb: 'CCCCCC' } }, left: { style: 'thin', color: { argb: 'CCCCCC' } }, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
     }
   }
-  row.height = 16;
+  row.height = 18;
   return row;
+}
+
+function drawHeader3colExcel(ws, titulo, subtitulo, codigo, colCount) {
+  // We simulate the 3-column box using rows 1 to 4 and merging cells
+  // Cols for IPD: 1 to 2
+  // Cols for Title: 3 to colCount - 1
+  // Cols for Code: colCount
+  const r1 = ws.addRow(['INSTITUTO PERUANO', '', titulo, ...Array(colCount - 4).fill(''), 'Código :']);
+  const r2 = ws.addRow(['DEL DEPORTE', '', subtitulo, ...Array(colCount - 4).fill(''), codigo]);
+  const r3 = ws.addRow(['IPD / DINADAF', '', '', ...Array(colCount - 4).fill(''), 'Versión : 01']);
+  const r4 = ws.addRow(['UF-PMD', '', '', ...Array(colCount - 4).fill(''), '']);
+
+  [r1, r2, r3, r4].forEach(row => row.height = 12);
+
+  // Left column (IPD)
+  ws.mergeCells(`A1:B1`); ws.getCell('A1').font = { bold: true, size: 7.5 }; ws.getCell('A1').alignment = { horizontal: 'center' };
+  ws.mergeCells(`A2:B2`); ws.getCell('A2').font = { bold: true, size: 7.5 }; ws.getCell('A2').alignment = { horizontal: 'center' };
+  ws.mergeCells(`A3:B3`); ws.getCell('A3').font = { size: 6.5, color: { argb: '555555' } }; ws.getCell('A3').alignment = { horizontal: 'center' };
+  ws.mergeCells(`A4:B4`); ws.getCell('A4').font = { size: 6, color: { argb: '777777' } }; ws.getCell('A4').alignment = { horizontal: 'center' };
+
+  // Center column (Title)
+  ws.mergeCells(1, 3, 1, Math.max(3, colCount - 1));
+  ws.getCell(1, 3).font = { bold: true, size: 11 }; ws.getCell(1, 3).alignment = { horizontal: 'center', vertical: 'middle' };
+  
+  ws.mergeCells(2, 3, 4, Math.max(3, colCount - 1));
+  ws.getCell(2, 3).font = { bold: true, size: 10, color: { argb: '333333' } }; ws.getCell(2, 3).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  // Right column (Código)
+  const codeCell = ws.getCell(1, colCount); codeCell.font = { size: 7.5 }; codeCell.alignment = { horizontal: 'right' };
+  const valCell = ws.getCell(2, colCount); valCell.font = { bold: true, size: 8 }; valCell.alignment = { horizontal: 'right' };
+  const verCell = ws.getCell(3, colCount); verCell.font = { size: 7.5 }; verCell.alignment = { horizontal: 'right' };
+
+  // Draw outer box borders for the header array (rows 1 to 4)
+  for (let c = 1; c <= colCount; c++) {
+    ws.getCell(1, c).border = { ...ws.getCell(1, c).border, top: { style: 'thin', color: { argb: 'CCCCCC' } } };
+    ws.getCell(4, c).border = { ...ws.getCell(4, c).border, bottom: { style: 'thin', color: { argb: 'CCCCCC' } } };
+  }
+  [1,2,3,4].forEach(r => {
+    ws.getCell(r, 1).border = { ...ws.getCell(r, 1).border, left: { style: 'thin', color: { argb: 'CCCCCC' } } };
+    ws.getCell(r, 2).border = { ...ws.getCell(r, 2).border, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
+    ws.getCell(r, colCount - 1).border = { ...ws.getCell(r, colCount - 1).border, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
+    ws.getCell(r, colCount).border = { ...ws.getCell(r, colCount).border, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
+  });
+
+  ws.addRow([]); // Blank row to simulate spacing
 }
 
 // ── Consolidado Técnico Excel (matches PDF SUB-FO-25) ─────
@@ -248,6 +296,11 @@ router.get('/consolidado-tecnico', async (req, res) => {
     const tipo = req.query.tipo || 'PAD1';
     const periodo = req.query.periodo || new Date().toISOString().slice(0,7).replace('-','');
     const subtipoLabel = tipo === 'PAD1' ? 'I' : tipo === 'PAD2' ? 'II' : '(PNM)';
+
+    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
+    if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
+      return res.status(403).json({ error: `El periodo ${periodo} no esta cerrado. Solo se pueden exportar consolidados de periodos cerrados.` });
+    }
 
     // Movements for the period
     const movResult = await query(`
@@ -290,19 +343,8 @@ router.get('/consolidado-tecnico', async (req, res) => {
     const COL_COUNT = 5;
     const headers = ['Nº', 'FEDERACIÓN', 'DEPORTISTA', 'ESTADO', 'NIVEL'];
 
-    // Title
-    ws.mergeCells('A1:E1');
-    ws.getCell('A1').value = 'CONSOLIDADO DEL INFORME TÉCNICO';
-    ws.getCell('A1').font = { bold: true, size: 12 };
-    ws.getCell('A1').alignment = { horizontal: 'center' };
-    ws.mergeCells('A2:E2');
-    ws.getCell('A2').value = `PROGRAMA DE APOYO AL DEPORTISTA ${subtipoLabel} — ${periodoLabel(periodo).toUpperCase()}`;
-    ws.getCell('A2').font = { bold: true, size: 10, color: { argb: '333333' } };
-    ws.getCell('A2').alignment = { horizontal: 'center' };
-    ws.mergeCells('A3:E3');
-    ws.getCell('A3').value = 'Instituto Peruano del Deporte — DINADAF — UF-PMD';
-    ws.getCell('A3').font = { size: 9, color: { argb: '666666' } };
-    ws.getCell('A3').alignment = { horizontal: 'center' };
+    // Replaced the basic headers with the PDF-style header block
+    drawHeader3colExcel(ws, 'CONSOLIDADO DEL INFORME TÉCNICO', `PROGRAMA DE APOYO AL DEPORTISTA ${subtipoLabel} — ${periodoLabel(periodo).toUpperCase()}`, 'SUB-FO-25', COL_COUNT);
 
     ws.getColumn(1).width = 5;
     ws.getColumn(2).width = 25;
@@ -367,26 +409,41 @@ router.get('/consolidado-tecnico', async (req, res) => {
       }
     });
 
-    // Resumen por nivel
+    // Resumen por Federación y Nivel
     ws.addRow([]);
-    xlSectionBanner(ws, 'RESUMEN POR NIVEL', COL_COUNT);
-    const resHeaders = ws.addRow(['NIVEL', 'CANTIDAD']);
-    resHeaders.eachCell(c => {
+    const levels = [...new Set(activoRows.map(r => r.cod_nivel))].sort();
+    const sumCols = levels.length + 2;
+    xlSectionBanner(ws, 'RESUMEN POR FEDERACIÓN Y NIVEL', sumCols);
+    
+    const headersRes = ['FEDERACIÓN', ...levels, 'TOTAL'];
+    const hRowRes = ws.addRow(headersRes);
+    hRowRes.eachCell(c => {
       c.font = { bold: true, color: { argb: XL.headerText }, size: 8 };
       c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL.headerBg } };
       c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.border = { top: { style: 'thin', color: { argb: 'CCCCCC' } }, bottom: { style: 'thin', color: { argb: 'CCCCCC' } }, left: { style: 'thin', color: { argb: 'CCCCCC' } }, right: { style: 'thin', color: { argb: 'CCCCCC' } } };
     });
-    resHeaders.height = 16;
+    hRowRes.height = 18;
 
-    const nivelGroup = {};
-    activoRows.forEach(r => { nivelGroup[r.cod_nivel] = (nivelGroup[r.cod_nivel] || 0) + 1; });
-    Object.entries(nivelGroup).sort().forEach(([niv, cnt], i) => {
-      const row = xlDataRow(ws, [niv, cnt], i);
-      row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-      row.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+    const fedGroup = {};
+    activoRows.forEach(r => {
+      const f = r.asociacion || '(Sin Asignar)';
+      if (!fedGroup[f]) fedGroup[f] = { fed: f, total: 0 };
+      fedGroup[f][r.cod_nivel] = (fedGroup[f][r.cod_nivel] || 0) + 1;
+      fedGroup[f].total++;
     });
 
-    xlTotalRow(ws, [`Total: ${activoRows.length} deportistas activos`, ''], COL_COUNT);
+    Object.values(fedGroup).sort((a, b) => a.fed.localeCompare(b.fed)).forEach((fedData, i) => {
+      const rowVals = [fedData.fed, ...levels.map(lv => fedData[lv] || '-'), fedData.total];
+      const row = xlDataRow(ws, rowVals, i);
+      for (let j = 2; j <= sumCols; j++) {
+        row.getCell(j).alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+    });
+
+    if (activoRows.length > 0) {
+      xlTotalRow(ws, [`Total: ${activoRows.length} deportistas activos`], sumCols);
+    }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Consolidado_Tecnico_${padLabel(tipo).replace(/ /g,'_')}_${periodo}.xlsx`);
@@ -404,6 +461,11 @@ router.get('/consolidado-economico', async (req, res) => {
     const tipo = req.query.tipo || 'PAD1';
     const periodo = req.query.periodo || new Date().toISOString().slice(0,7).replace('-','');
     const subtipoLabel = tipo === 'PAD1' ? 'I' : tipo === 'PAD2' ? 'II' : '(PNM)';
+
+    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
+    if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
+      return res.status(403).json({ error: `El periodo ${periodo} no esta cerrado. Solo se pueden exportar consolidados de periodos cerrados.` });
+    }
 
     const result = await query(`
       SELECT
@@ -440,19 +502,18 @@ router.get('/consolidado-economico', async (req, res) => {
     const COL_COUNT = 9;
     const headers = ['Nº', 'FEDERACIÓN', 'DEPORTISTA', 'NRO. DE CUENTA', 'NRO. DOC.', 'APODERADO', 'DNI APO.', 'NIVEL', 'MONTO'];
 
+    ws.getColumn(1).width = 5;   // Nº
+    ws.getColumn(2).width = 22;  // Federación
+    ws.getColumn(3).width = 30;  // Deportista
+    ws.getColumn(4).width = 18;  // Nro. de Cuenta
+    ws.getColumn(5).width = 12;  // Nro. Doc.
+    ws.getColumn(6).width = 28;  // Apoderado
+    ws.getColumn(7).width = 12;  // DNI Apo.
+    ws.getColumn(8).width = 8;   // Nivel
+    ws.getColumn(9).width = 12;  // Monto
+
     // Title
-    ws.mergeCells('A1:I1');
-    ws.getCell('A1').value = 'CONSOLIDADO DEL INFORME ECONÓMICO';
-    ws.getCell('A1').font = { bold: true, size: 12 };
-    ws.getCell('A1').alignment = { horizontal: 'center' };
-    ws.mergeCells('A2:I2');
-    ws.getCell('A2').value = `PROGRAMA DE APOYO AL DEPORTISTA ${subtipoLabel} — ${periodoLabel(periodo).toUpperCase()}`;
-    ws.getCell('A2').font = { bold: true, size: 10, color: { argb: '333333' } };
-    ws.getCell('A2').alignment = { horizontal: 'center' };
-    ws.mergeCells('A3:I3');
-    ws.getCell('A3').value = 'Instituto Peruano del Deporte — DINADAF — UF-PMD';
-    ws.getCell('A3').font = { size: 9, color: { argb: '666666' } };
-    ws.getCell('A3').alignment = { horizontal: 'center' };
+    drawHeader3colExcel(ws, 'CONSOLIDADO DEL INFORME ECONÓMICO', `PROGRAMA DE APOYO AL DEPORTISTA ${subtipoLabel} — ${periodoLabel(periodo).toUpperCase()}`, 'SUB-FO-26', COL_COUNT);
 
     ws.getColumn(1).width = 5;   // Nº
     ws.getColumn(2).width = 22;  // Federación

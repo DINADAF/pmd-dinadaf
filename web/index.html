@@ -1625,14 +1625,27 @@ function currentPeriodo() {
   return d.getFullYear() + String(d.getMonth()+1).padStart(2,'0');
 }
 
-function descargarReporte(format, report, selId) {
+async function descargarReporte(format, report, selId) {
   if (!online) { alert('API local no disponible'); return; }
   const tipo = document.getElementById(selId || 'sel-tipo-cons')?.value || 'PAD1';
-  // Use the corresponding period input if available
   const periodoInput = report.includes('economico')
     ? document.getElementById('inp-periodo-cons-eco')
     : document.getElementById('inp-periodo-cons-tec');
   const periodo = periodoInput?.value ? periodoInput.value.replace('-','') : currentPeriodo();
+
+  if (report === 'consolidado-tecnico' || report === 'consolidado-economico') {
+    try {
+      const perList = await apiGet('/api/movimientos/periodos');
+      const pData = perList.find(p => p.periodo === periodo);
+      if (!pData || pData.cerrado !== 1) {
+        alert(`❌ El periodo ${periodo} no está cerrado.\nSolo se pueden generar consolidados de periodos finalizados y cerrados en Cambio PAD.`);
+        return;
+      }
+    } catch(e) {
+      console.warn('Period verification failed', e);
+    }
+  }
+
   window.open(`${API}/api/${format}/${report}?tipo=${tipo}&periodo=${periodo}`, '_blank');
 }
 
