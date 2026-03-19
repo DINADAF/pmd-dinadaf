@@ -6,7 +6,7 @@
 <title>Plataforma PMD - DINADAF/IPD</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -2195,6 +2195,7 @@ function showPage(id, el) {
   if (id==='orgs') loadCats();
   if (id === 'orgs') loadOrgs();
   if (id==='home') loadHomeModule();
+  if (id==='dashboard') loadDashboard();
 }
 
 // ── PILLS ────────────────────────────────────────────────
