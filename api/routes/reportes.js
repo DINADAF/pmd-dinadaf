@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { uploadJSON } = require('../sharepoint');
+const logger = require('../logger');
+
 
 // KPI summary — used by dashboard Module 1
 router.get('/kpi', async (_req, res) => {
@@ -24,7 +26,63 @@ router.get('/kpi', async (_req, res) => {
     `);
     res.json(result.recordset[0]);
   } catch (err) {
-    console.error(err);
+    logger.error('reportes', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// New Dashboard KPIs
+router.get('/dashboard', async (_req, res) => {
+  try {
+    const [finanzasR, demografiaR, retencionesR] = await Promise.all([
+      // 1. Distribución del presupuesto por Federación (Top 10)
+      query(`
+        SELECT TOP 10
+               a.nombre AS asociacion,
+               SUM(mr.monto_soles) AS total_inversion,
+               COUNT(p.cod_deportista) AS deportistas
+        FROM pad.PAD p
+        JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
+        JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
+        JOIN pad.montos_referencia mr ON p.cod_nivel = mr.cod_nivel
+          AND FORMAT(GETDATE(), 'yyyyMM') BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
+        WHERE p.cod_estado_pad = 'ACT'
+        GROUP BY a.nombre
+        ORDER BY total_inversion DESC
+      `),
+      
+      // 2. Demografía: Sexo y Tipo / Nivel
+      query(`
+        SELECT p.cod_tipo_pad, p.cod_nivel, d.sexo, COUNT(*) as cantidad
+        FROM pad.PAD p
+        JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
+        WHERE p.cod_estado_pad IN ('ACT', 'LES', 'LSS')
+        GROUP BY p.cod_tipo_pad, p.cod_nivel, d.sexo
+      `),
+
+      // 3. Impacto y Continuidad: Estados y Vencimientos
+      query(`
+        SELECT
+          SUM(CASE WHEN p.cod_estado_pad = 'LES' THEN 1 ELSE 0 END) as lesionados_les,
+          SUM(CASE WHEN p.cod_estado_pad = 'LSS' THEN 1 ELSE 0 END) as lesionados_lss,
+          (
+            SELECT COUNT(DISTINCT r.cod_deportista)
+            FROM pad.resultados_deportista r
+            JOIN pad.PAD p2 ON r.cod_deportista = p2.cod_deportista
+            WHERE p2.cod_estado_pad = 'ACT'
+              AND r.fecha_vencimiento BETWEEN GETDATE() AND DATEADD(day, 30, GETDATE())
+          ) as vencimientos_30_dias
+        FROM pad.PAD p
+      `)
+    ]);
+
+    res.json({
+      finanzas_federaciones: finanzasR.recordset,
+      demografia: demografiaR.recordset,
+      continuidad: retencionesR.recordset[0]
+    });
+  } catch (err) {
+    logger.error('reportes', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -53,7 +111,7 @@ router.get('/activos', async (_req, res) => {
     `);
     res.json(result.recordset);
   } catch (err) {
-    console.error(err);
+    logger.error('reportes', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -75,7 +133,7 @@ router.get('/todos', async (_req, res) => {
     `);
     res.json(result.recordset);
   } catch (err) {
-    console.error(err);
+    logger.error('reportes', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -152,7 +210,7 @@ router.post('/exportar', async (_req, res) => {
       registros: activosR.recordset.length,
     });
   } catch (err) {
-    console.error(err);
+    logger.error('reportes', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
