@@ -46,3 +46,16 @@ PAD_IPD/
 - Server: `localhost\SQLEXPRESS`
 - Database: `PAD_IPD`
 - Auth: Windows (recommended) or SQL Auth (sa)
+
+## Environment Variables (`api/.env`)
+The local API requires an `.env` file in the `api/` folder (never commiteed). Base variables required:
+```ini
+DB_SERVER=localhost
+DB_PORT=1433
+DB_NAME=PAD_IPD
+DB_USER=sa
+DB_PASSWORD=<password>
+
+API_PORT=8080
+API_KEYS=<32_char_hex_random_string>  # Required for API authentication
+```
