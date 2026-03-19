@@ -281,8 +281,8 @@ tbody tr{transition:background var(--dur-fast) var(--ease-std)}
     <div class="module-card" id="mc-gestion" onclick="enterModule('gestion')">
       <div class="module-icon">&#9654;</div>
       <div class="module-title">Gestion PAD</div>
-      <div class="module-desc">Registro de ingresos, retiros y cambios de nivel. Requiere API local activa en PC de trabajo.</div>
-      <div class="module-status" id="mc-gestion-status"><span class="dot gray"></span> Verificando API...</div>
+      <div class="module-desc">Registro de ingresos, retiros y cambios de nivel. Disponible solo en red local de la institucion.</div>
+      <div class="module-status" id="mc-gestion-status"><span class="dot gray"></span> Solo red local</div>
     </div>
   </div>
 </div>
@@ -956,7 +956,9 @@ tbody tr{transition:background var(--dur-fast) var(--ease-std)}
 </div>
 
 <script>
-const API = 'http://localhost:3001';
+// Si se accede desde la API (puerto 3001), usar URLs relativas; si desde GitHub Pages, apuntar a localhost
+const IS_LOCAL_API = location.port === '3001';
+const API = IS_LOCAL_API ? '' : 'http://localhost:3001';
 let online = false;
 let cats = { asociaciones: [], niveles: [] };
 let depData = [];
@@ -974,7 +976,7 @@ let nominaData = [];
 let nominaFilter = '';
 
 // ── MSAL / ONEDRIVE ────────────────────────────────────────
-const IS_LOCALHOST = ['localhost','127.0.0.1'].includes(location.hostname);
+const IS_LOCALHOST = ['localhost','127.0.0.1'].includes(location.hostname) || location.port === '3001';
 const GESTION_PAD_USERS = ['apoyo19dinadaf@ipd.gob.pe', 'dzuta@ipd.gob.pe'];
 const MSAL_CONFIG = {
   auth: {
@@ -1074,11 +1076,17 @@ async function checkApi() {
   if (dotHome) dotHome.className = 'api-dot' + (online ? ' online' : '');
   if (txtHome) txtHome.textContent = online ? 'API activa' : 'API inactiva';
   const mcStatus = document.getElementById('mc-gestion-status');
-  if (mcStatus) mcStatus.innerHTML = online
-    ? '<span class="dot pulse"></span> API activa &mdash; disponible'
-    : '<span class="dot gray"></span> Requiere PC de trabajo';
+  if (mcStatus) {
+    if (IS_LOCALHOST) {
+      mcStatus.innerHTML = online
+        ? '<span class="dot pulse"></span> API activa &mdash; disponible'
+        : '<span class="dot gray"></span> API no disponible';
+    } else {
+      mcStatus.innerHTML = '<span class="dot gray"></span> Solo red local';
+    }
+  }
   const mc = document.getElementById('mc-gestion');
-  if (mc) mc.classList.toggle('disabled', !online);
+  if (mc) mc.classList.toggle('disabled', IS_LOCALHOST ? !online : true);
 
   // Inside-app offline bar
   const bar = document.getElementById('offline-bar');
@@ -1901,8 +1909,7 @@ async function doExport() {
   try {
     const res = await apiPost('/api/reportes/exportar', {});
     document.getElementById('last-update').textContent = 'Exportado: '+new Date(res.exportado).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
-    const od = res.onedrive ? ' + OneDrive' : '';
-    toast(`Datos exportados (${res.registros} activos). Ahora ejecuta publicar_datos.bat para publicar en GitHub Pages.${od}`, 'success', 'Exportación completa', 8000);
+    toast(`Datos exportados a OneDrive (${res.registros} activos). Los especialistas veran los datos actualizados en Consulta PAD.`, 'success', 'Exportacion completa', 6000);
     await loadDashboard();
   } catch(e) { toast('Error al exportar: '+e.message, 'error'); }
   finally { btn.disabled=false; btn.innerHTML='&#8593; Exportar datos'; }
@@ -1944,21 +1951,19 @@ function switchTab(el, tabId) {
 // ── MODULE NAVIGATION ─────────────────────────────────────
 function enterModule(mod) {
   if (mod === 'gestion') {
+    // Desde GitHub Pages: no se puede usar Gestion PAD, informar
+    if (!IS_LOCALHOST) {
+      toast('Gestion PAD solo esta disponible en la red local de la institucion. Accede desde el PC de trabajo o solicita la URL de red interna.', 'info', 'Modulo local', 6000);
+      return;
+    }
     const userEmail = (document.getElementById('home-user-email')?.textContent || '').toLowerCase();
     const isAuthorized = IS_LOCALHOST || GESTION_PAD_USERS.includes(userEmail);
     if (!isAuthorized) {
-      if (!IS_LOCALHOST && msalApp && !msalApp.getAllAccounts().length) {
-        toast('Debes iniciar sesión con tu cuenta IPD para acceder a Gestión PAD.', 'warning');
-        msalApp.loginPopup({ scopes: GRAPH_SCOPES })
-          .then(r => { showApp(r.account); updateAuthUI(); })
-          .catch(() => {});
-      } else {
-        toast('No tienes acceso al módulo de Gestión PAD.', 'error');
-      }
+      toast('No tienes acceso al modulo de Gestion PAD.', 'error');
       return;
     }
     if (!online) {
-      toast('La API local no está activa. Inicia el servidor antes de acceder a este módulo.\n\nEjecuta: iniciar_api.vbs', 'warning');
+      toast('La API local no esta activa. Inicia el servidor antes de acceder a este modulo.', 'warning');
       return;
     }
   }

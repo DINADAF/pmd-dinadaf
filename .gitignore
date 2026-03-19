@@ -2,10 +2,6 @@
 data/
 docs/
 
-# Excepcion: web/data/ contiene JSON exportados para GitHub Pages (sin datos sensibles)
-!web/data/
-!web/data/*.json
-
 # SQL scripts and internal documentation (local only)
 sql/
 CLAUDE.md
@@ -34,8 +30,8 @@ sql/__pycache__/
 Thumbs.db
 desktop.ini
 
-# Exported CSV data — sensitive
-web/data/*.csv
+# Exported data — stays in OneDrive only, never in git
+web/data/
 
 # Logs
 *.log
