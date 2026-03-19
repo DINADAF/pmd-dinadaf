@@ -23,7 +23,7 @@
 --shadow-lg:0 4px 16px rgba(0,0,0,0.08);
 --transition:0.2s cubic-bezier(0.4,0,0.2,1);
 }
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow-x:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14.5px;line-height:1.5;overflow-x:hidden}
 .sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:#5C0A14;color:#fff;display:flex;flex-direction:column;z-index:100}
 .sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,0.08)}
 .sidebar-header h1{font-size:15px;font-weight:700;letter-spacing:-0.3px}
@@ -63,8 +63,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
 .card-header h3{font-size:14px;font-weight:600}
 table{width:100%;border-collapse:collapse}
-th{text-align:left;padding:10px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);font-weight:600;background:var(--surface2);border-bottom:1px solid var(--border)}
-td{padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px}
+th{text-align:left;padding:11px 16px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.7px;color:var(--text2);font-weight:600;background:var(--surface2);border-bottom:1px solid var(--border)}
+td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:13.5px}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--surface2)}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
@@ -163,6 +163,8 @@ tr:hover td{background:var(--surface2)}
 .edit-grid .full{grid-column:1/-1}
 /* Row hover en tablas */
 tbody tr{transition:background var(--dur-fast) var(--ease-std)}
+th.sortable{cursor:pointer;user-select:none;position:relative}
+th.sortable:hover{color:var(--accent)}
 /* Btn edit pequeño */
 .btn-edit{background:none;border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:var(--radius);font-size:11px;cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast),border-color var(--dur-fast);font-family:inherit;font-weight:600}
 .btn-edit:hover{background:var(--blue-light);color:var(--blue);border-color:var(--blue)}
@@ -360,24 +362,36 @@ tbody tr{transition:background var(--dur-fast) var(--ease-std)}
 
     <!-- MODULE HOME (shown when entering a module) -->
     <div class="page active" id="page-home">
-      <div style="margin-bottom:28px">
+      <div style="margin-bottom:24px">
         <div id="home-user" style="font-size:12px;color:var(--text3);margin-bottom:4px"></div>
-        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px" id="module-welcome-title">Bienvenido al modulo de Gestion PAD</h2>
-        <p style="color:var(--text2);font-size:13px">Usa el menu lateral para navegar entre las herramientas disponibles.</p>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px" id="module-welcome-title">Gestion PAD</h2>
+        <p style="color:var(--text2);font-size:13px">Programa de Apoyo al Deportista &mdash; Directiva N° 003-2025-IPD/DINADAF</p>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:700px;margin-bottom:28px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;max-width:900px;margin-bottom:24px">
         <div class="stat-card" style="cursor:pointer" onclick="showPage('cambios',document.getElementById('nav-cambios'))">
-          <div class="stat-label">&#9654; Cambios PAD del mes</div>
+          <div class="stat-label">Cambios PAD del mes</div>
           <div class="stat-value" id="k-cambios-mes">—</div>
           <div class="stat-sub">Movimientos en el periodo actual</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">&#9679; Deportistas activos</div>
+          <div class="stat-label">Deportistas activos</div>
           <div class="stat-value" id="k-total-mod">—</div>
           <div class="stat-sub" id="k-monto-mod">Cargando...</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">Periodo actual</div>
+          <div class="stat-value" id="k-periodo-actual" style="font-size:22px">—</div>
+          <div class="stat-sub" id="k-periodo-estado">—</div>
+        </div>
       </div>
-      <div class="alert alert-info" id="home-offline-note" style="display:none;max-width:700px">&#9432; API local inactiva. Solo disponible en la PC de trabajo.</div>
+      <div style="display:flex;gap:10px;max-width:900px;margin-bottom:24px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="openModal('modal-cambio')">+ Nuevo cambio PAD</button>
+        <button class="btn btn-secondary" onclick="showPage('cambios',document.getElementById('nav-cambios'))">Ver periodos</button>
+        <button class="btn btn-secondary" onclick="showPage('deportistas',null)">Deportistas</button>
+        <button class="btn btn-secondary" onclick="showPage('consolidados',null)">Consolidados</button>
+        <button class="btn btn-green" id="btn-export-home" onclick="doExport()">&#8593; Exportar datos a OneDrive</button>
+      </div>
+      <div class="alert alert-info" id="home-offline-note" style="display:none;max-width:900px">&#9432; API local inactiva. Solo disponible en la PC de trabajo.</div>
     </div>
 
     <!-- DASHBOARD -->
@@ -479,7 +493,19 @@ tbody tr{transition:background var(--dur-fast) var(--ease-std)}
         </div>
         <div class="card">
           <table>
-            <thead><tr><th>#</th><th>Tipo</th><th>Deportista</th><th>DNI</th><th>Prog.</th><th>Nivel ant.</th><th>Nivel nuevo</th><th>Nro. Informe</th><th>Expedientes</th><th>Motivo</th><th></th></tr></thead>
+            <thead><tr>
+              <th>#</th>
+              <th class="sortable" onclick="sortDetalle('cod_tip_mov')">Tipo</th>
+              <th class="sortable" onclick="sortDetalle('deportista')">Deportista</th>
+              <th class="sortable" onclick="sortDetalle('num_documento')">DNI</th>
+              <th class="sortable" onclick="sortDetalle('cod_tipo_pad')">Prog.</th>
+              <th class="sortable" onclick="sortDetalle('nivel_anterior')">Nivel ant.</th>
+              <th class="sortable" onclick="sortDetalle('nivel_nuevo')">Nivel nuevo</th>
+              <th class="sortable" onclick="sortDetalle('nro_informe')">Nro. Informe</th>
+              <th>Expedientes</th>
+              <th class="sortable" onclick="sortDetalle('motivo')">Motivo</th>
+              <th></th>
+            </tr></thead>
             <tbody id="t-detalle-cambios"><tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr></tbody>
           </table>
         </div>
@@ -1348,9 +1374,7 @@ function renderPeriodosPage() {
         </div>
       </td>
       <td style="text-align:center">
-        ${cerrado
-          ? `<span style="color:var(--text3);font-size:12px">&#128274; Cerrado</span>`
-          : `<button class="btn-icon btn-edit" title="Ver y editar cambios del periodo" onclick="verDetallePeriodo('${per}')">&#9998;</button>`}
+        <button class="btn-icon btn-edit" title="${cerrado?'Ver cambios del periodo':'Ver y editar cambios del periodo'}" onclick="verDetallePeriodo('${per}')">${cerrado?'&#128269;':'&#9998;'}</button>
       </td>
     </tr>`;
   }).join('');
@@ -1435,6 +1459,20 @@ function renderDetalle(data) {
     <td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.motivo||''}">${r.motivo||'—'}</td>
     <td>${cerrado ? '' : `<button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="editarCambio(${r.cod_cambio})">&#9998;</button>`}</td>
   </tr>`).join('');
+}
+
+let detalleSortCol = null;
+let detalleSortAsc = true;
+
+function sortDetalle(col) {
+  if (detalleSortCol === col) detalleSortAsc = !detalleSortAsc;
+  else { detalleSortCol = col; detalleSortAsc = true; }
+  const sorted = [...periodoDetalleData].sort((a,b) => {
+    const va = (a[col]||'').toString().toLowerCase();
+    const vb = (b[col]||'').toString().toLowerCase();
+    return detalleSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  renderDetalle(sorted);
 }
 
 function filterDetalle() {
@@ -1989,6 +2027,12 @@ function enterModule(mod) {
 }
 
 function goHome() {
+  if (IS_LOCAL_API) {
+    // En API local, "Inicio" va a la página principal del módulo, no al selector
+    showPage('home', null);
+    loadHomeModule();
+    return;
+  }
   document.getElementById('home-screen').classList.remove('hidden');
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('main-app').style.display = 'none';
@@ -2013,6 +2057,10 @@ async function loadHomeModule() {
     const perActual = hoy.getFullYear()+String(hoy.getMonth()+1).padStart(2,'0');
     const perData = periodos.find(p => p.periodo === perActual);
     document.getElementById('k-cambios-mes').textContent = perData ? perData.cantidad_registros : 0;
+    const MESES_HOME = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const mesNum = parseInt(perActual.slice(4,6),10);
+    document.getElementById('k-periodo-actual').textContent = MESES_HOME[mesNum]+' '+perActual.slice(0,4);
+    document.getElementById('k-periodo-estado').textContent = perData?.cerrado == 1 ? 'Cerrado' : 'Abierto';
     const userEl = document.getElementById('home-user');
     if (userEl) userEl.textContent = document.getElementById('home-user-email')?.textContent || '';
   } catch(e) { console.warn('loadHomeModule:', e.message); }
@@ -2082,6 +2130,11 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
 
   await checkApi();
   setInterval(checkApi, 30000);
+
+  // Si es la API local, entrar directo a Gestión PAD sin pasar por el home screen
+  if (IS_LOCAL_API && online) {
+    enterModule('gestion');
+  }
 })();
 </script>
 </body>

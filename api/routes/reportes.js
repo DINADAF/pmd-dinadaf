@@ -34,7 +34,7 @@ router.get('/activos', async (_req, res) => {
   try {
     const result = await query(`
       SELECT
-        d.num_documento, d.ap_paterno, d.ap_materno, d.nombres,
+        d.cod_deportista, d.num_documento, d.ap_paterno, d.ap_materno, d.nombres,
         d.sexo, p.cod_tipo_pad, p.cod_nivel, p.cod_estado_pad,
         p.es_permanente, p.fecha_ingreso,
         n.nombre_nivel AS nivel_desc,

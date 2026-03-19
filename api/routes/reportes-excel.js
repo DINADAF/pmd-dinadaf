@@ -192,32 +192,28 @@ router.get('/consolidado-tecnico', async (req, res) => {
       SELECT
         d.num_documento, d.ap_paterno, d.ap_materno, d.nombres, d.sexo,
         p.cod_tipo_pad, p.cod_nivel, p.es_permanente, p.fecha_ingreso,
-        n.nombre_nivel, a.nombre AS asociacion,
-        mr.monto_soles
+        n.nombre_nivel, a.nombre AS asociacion
       FROM pad.PAD p
       JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
       JOIN cat.Nivel n ON p.cod_nivel = n.cod_nivel
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
-      LEFT JOIN pad.montos_referencia mr ON mr.cod_nivel = p.cod_nivel
-        AND @periodo BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
       WHERE p.cod_estado_pad = 'ACT' AND p.cod_tipo_pad = @tipo
       ORDER BY a.nombre, d.ap_paterno, d.ap_materno
     `, [
       { name: 'tipo', type: sql.VarChar(5), value: tipo },
-      { name: 'periodo', type: sql.VarChar(6), value: periodo }
     ]);
 
     const rows = result.recordset;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(`Consolidado ${padLabel(tipo)}`);
 
-    ws.mergeCells('A1:H1');
+    ws.mergeCells('A1:G1');
     ws.getCell('A1').value = `CONSOLIDADO TÉCNICO ${padLabel(tipo)} — ${periodoLabel(periodo)}`;
     ws.getCell('A1').font = { bold: true, size: 13 };
     ws.getCell('A1').alignment = { horizontal: 'center' };
 
     ws.addRow([]);
-    const hRow = ws.addRow(['N°', 'FEDERACIÓN', 'DEPORTISTA', 'DNI', 'SEXO', 'NIVEL', 'MONTO (S/)', 'F. INGRESO']);
+    const hRow = ws.addRow(['N°', 'FEDERACIÓN', 'DEPORTISTA', 'DNI', 'SEXO', 'NIVEL', 'F. INGRESO']);
     hRow.eachCell(c => {
       c.font = { bold: true, color: { argb: 'FFFFFF' }, size: 9 };
       c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1D6B4F' } };
@@ -230,23 +226,17 @@ router.get('/consolidado-tecnico', async (req, res) => {
     ws.getColumn(5).width = 6;
     ws.getColumn(6).width = 8;
     ws.getColumn(7).width = 12;
-    ws.getColumn(8).width = 12;
 
-    let total = 0;
     rows.forEach((r, i) => {
-      const m = Number(r.monto_soles) || 0;
-      total += m;
       const row = ws.addRow([
         i+1, r.asociacion || '', `${r.ap_paterno} ${r.ap_materno}, ${r.nombres}`,
-        r.num_documento, r.sexo, r.nombre_nivel, m,
+        r.num_documento, r.sexo, r.nombre_nivel,
         r.fecha_ingreso ? new Date(r.fecha_ingreso).toLocaleDateString('es-PE') : ''
       ]);
-      row.getCell(7).numFmt = '#,##0.00';
       if (i % 2 === 0) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F7F6F3' } }; });
     });
 
-    const tRow = ws.addRow(['', '', '', '', '', `Total: ${rows.length}`, total, '']);
-    tRow.getCell(7).numFmt = '#,##0.00';
+    const tRow = ws.addRow(['', '', '', '', '', `Total: ${rows.length}`, '']);
     tRow.eachCell(c => { c.font = { bold: true }; });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
