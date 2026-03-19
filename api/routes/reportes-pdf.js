@@ -2,6 +2,8 @@ const express = require('express');
 const router  = express.Router();
 const PDFDocument = require('pdfkit');
 const { query, sql } = require('../db');
+const logger = require('../logger');
+const { validarParamsReporte } = require('../middleware/validate');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -357,7 +359,7 @@ router.get('/consolidado-tecnico', async (req, res) => {
     doc.flushPages();
     doc.end();
   } catch (err) {
-    console.error(err);
+    logger.error('reportes-pdf', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -459,7 +461,7 @@ router.get('/consolidado-economico', async (req, res) => {
     doc.flushPages();
     doc.end();
   } catch (err) {
-    console.error(err);
+    logger.error('reportes-pdf', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -592,7 +594,7 @@ router.get('/cambios-pad', async (req, res) => {
     doc.flushPages();
     doc.end();
   } catch (err) {
-    console.error(err);
+    logger.error('reportes-pdf', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { sql, query } = require('../db');
+const logger = require('../logger');
+const { parseIntParam } = require('../middleware/validate');
+
+// Allowed enum values
+const TIPOS_DOC_VALIDOS = ['DNI', 'CE', 'PAS', 'OTR'];
+const SEXOS_VALIDOS = ['M', 'F'];
 
 // Search athlete by DNI
 router.get('/buscar', async (req, res) => {
@@ -42,7 +48,7 @@ router.get('/buscar', async (req, res) => {
 
     res.json({ found: true, deportista, pad_records: padResult.recordset });
   } catch (err) {
-    console.error(err);
+    logger.error('deportistas.buscar', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -57,10 +63,14 @@ router.post('/', async (req, res) => {
 
   if (!num_documento || !ap_paterno || !nombres)
     return res.status(400).json({ error: 'Campos requeridos: num_documento, ap_paterno, nombres' });
-  if (sexo && !['M', 'F'].includes(sexo))
+  if (num_documento.length > 20)
+    return res.status(400).json({ error: 'num_documento excede 20 caracteres' });
+  if (sexo && !SEXOS_VALIDOS.includes(sexo))
     return res.status(400).json({ error: 'sexo debe ser M o F' });
-  if (tipo_documento && !['DNI', 'CE', 'PAS', 'OTR'].includes(tipo_documento))
+  if (tipo_documento && !TIPOS_DOC_VALIDOS.includes(tipo_documento))
     return res.status(400).json({ error: 'tipo_documento debe ser DNI, CE, PAS o OTR' });
+  if (fecha_nac && isNaN(Date.parse(fecha_nac)))
+    return res.status(400).json({ error: 'fecha_nac no es una fecha válida' });
 
   try {
     const result = await query(
@@ -91,54 +101,79 @@ router.post('/', async (req, res) => {
     );
     res.json({ cod_deportista: result.recordset[0].cod_deportista });
   } catch (err) {
-    console.error(err);
+    logger.error('deportistas.create', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // Update bank account
 router.patch('/:cod/cuenta', async (req, res) => {
-  const { num_cuenta, tipo_giro } = req.body; // tipo_giro: 'CUENTA' | 'OPE'
+  const cod = parseIntParam(req.params.cod);
+  if (!cod) return res.status(400).json({ error: 'ID de deportista inválido' });
+
+  const { num_cuenta, tipo_giro } = req.body;
+  if (!['CUENTA', 'OPE'].includes(tipo_giro))
+    return res.status(400).json({ error: 'tipo_giro debe ser CUENTA o OPE' });
+  if (tipo_giro === 'CUENTA' && (!num_cuenta || typeof num_cuenta !== 'string' || num_cuenta.trim().length === 0 || num_cuenta.length > 30))
+    return res.status(400).json({ error: 'num_cuenta es requerido y no puede exceder 30 caracteres' });
+
   try {
     await query(
       `UPDATE pad.Deportistas SET num_cuenta = @cuenta WHERE cod_deportista = @cod`,
       [
-        { name: 'cuenta', type: sql.VarChar(30), value: tipo_giro === 'OPE' ? null : num_cuenta },
-        { name: 'cod', type: sql.Int, value: parseInt(req.params.cod) },
+        { name: 'cuenta', type: sql.VarChar(30), value: tipo_giro === 'OPE' ? null : num_cuenta.trim() },
+        { name: 'cod', type: sql.Int, value: cod },
       ]
     );
     res.json({ ok: true });
   } catch (err) {
-    console.error(err);
+    logger.error('deportistas.cuenta', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // Get single deportista by cod_deportista
 router.get('/:cod(\\d+)', async (req, res) => {
+  const cod = parseIntParam(req.params.cod);
+  if (!cod) return res.status(400).json({ error: 'ID inválido' });
   try {
     const result = await query(
-      `SELECT d.*, a.nombre AS asociacion_nombre
+      // Explicit field list — no d.* to avoid exposing all sensitive fields
+      `SELECT d.cod_deportista, d.num_documento, d.tipo_documento,
+              d.ap_paterno, d.ap_materno, d.nombres,
+              d.sexo, d.fecha_nac, d.cod_asociacion, d.cod_ubigeo,
+              d.num_cuenta, d.correo, d.telefono, d.agrupacion, d.activo,
+              a.nombre AS asociacion_nombre
        FROM pad.Deportistas d
        LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
        WHERE d.cod_deportista = @cod`,
-      [{ name: 'cod', type: sql.Int, value: parseInt(req.params.cod) }]
+      [{ name: 'cod', type: sql.Int, value: cod }]
     );
     if (!result.recordset.length) return res.status(404).json({ error: 'No encontrado' });
     res.json(result.recordset[0]);
   } catch (err) {
-    console.error(err);
+    logger.error('deportistas.get', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // Update all deportista fields
 router.put('/:cod(\\d+)', async (req, res) => {
+  const cod = parseIntParam(req.params.cod);
+  if (!cod) return res.status(400).json({ error: 'ID inválido' });
   const {
     num_documento, tipo_documento, ap_paterno, ap_materno, nombres,
     sexo, fecha_nac, cod_asociacion, cod_ubigeo, num_cuenta,
     correo, telefono, agrupacion
   } = req.body;
+  if (!num_documento || !ap_paterno || !nombres)
+    return res.status(400).json({ error: 'Campos requeridos: num_documento, ap_paterno, nombres' });
+  if (sexo && !SEXOS_VALIDOS.includes(sexo))
+    return res.status(400).json({ error: 'sexo debe ser M o F' });
+  if (tipo_documento && !TIPOS_DOC_VALIDOS.includes(tipo_documento))
+    return res.status(400).json({ error: 'tipo_documento debe ser DNI, CE, PAS o OTR' });
+  if (fecha_nac && isNaN(Date.parse(fecha_nac)))
+    return res.status(400).json({ error: 'fecha_nac no es una fecha válida' });
   try {
     await query(
       `UPDATE pad.Deportistas SET
@@ -170,12 +205,12 @@ router.put('/:cod(\\d+)', async (req, res) => {
         { name: 'correo',         type: sql.VarChar(100), value: correo || null },
         { name: 'telefono',       type: sql.VarChar(20),  value: telefono || null },
         { name: 'agrupacion',     type: sql.VarChar(100), value: agrupacion || null },
-        { name: 'cod',            type: sql.Int,          value: parseInt(req.params.cod) },
+        { name: 'cod',            type: sql.Int,          value: cod },
       ]
     );
     res.json({ ok: true });
   } catch (err) {
-    console.error(err);
+    logger.error('deportistas.update', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -1122,19 +1122,26 @@ async function checkApi() {
 }
 
 // ── FETCH HELPERS ──────────────────────────────────────────
+// API key is only applied to the local API (IS_LOCAL_API). GitHub Pages does not use it.
+const LOCAL_API_KEY = '67cf1a4e412c3f970f8cd0e416c53e4099cc17ae56129b09bd345bdd38c50c1b';
+function apiHeaders(extra = {}) {
+  const h = { ...extra };
+  if (IS_LOCAL_API) h['x-api-key'] = LOCAL_API_KEY;
+  return h;
+}
 async function apiGet(path) {
-  const r = await fetch(API + path);
+  const r = await fetch(API + path, { headers: apiHeaders() });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function apiPost(path, body) {
-  const r = await fetch(API + path, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const r = await fetch(API + path, { method: 'POST', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || 'Error');
   return j;
 }
 async function apiPut(path, body) {
-  const r = await fetch(API + path, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const r = await fetch(API + path, { method: 'PUT', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || 'Error');
   return j;

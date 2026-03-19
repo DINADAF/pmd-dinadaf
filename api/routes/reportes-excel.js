@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
 const { query, sql } = require('../db');
+const logger = require('../logger');
+const { validarParamsReporte } = require('../middleware/validate');
 
 function padLabel(cod) {
   return (cod || '').replace('PAD1','PAD I').replace('PAD2','PAD II');

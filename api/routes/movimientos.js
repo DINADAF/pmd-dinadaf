@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { sql, query, getPool } = require('../db');
+const logger = require('../logger');
+const { validarPeriodo } = require('../middleware/validate');
+
 
 // Register a PAD movement (ING / CAMBNIV / RET) in a single transaction
 router.post('/', async (req, res) => {
@@ -29,6 +32,11 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'ING requiere cod_tipo_pad y cod_nivel' });
   if (tipo_movimiento === 'CAMBNIV' && !cod_nivel)
     return res.status(400).json({ error: 'CAMBNIV requiere cod_nivel' });
+  if (periodo_vigencia && !validarPeriodo(periodo_vigencia))
+    return res.status(400).json({ error: 'periodo_vigencia debe tener formato YYYYMM válido' });
+  if (nro_informe && typeof nro_informe === 'string' && nro_informe.length > 80)
+    return res.status(400).json({ error: 'nro_informe excede 80 caracteres' });
+
 
   const pool = await getPool();
   const transaction = new sql.Transaction(pool);
@@ -175,7 +183,7 @@ router.get('/recientes', async (req, res) => {
     );
     res.json(result.recordset);
   } catch (err) {
-    console.error(err);
+    logger.error('movimientos', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -200,7 +208,7 @@ router.get('/periodos', async (req, res) => {
     );
     res.json(result.recordset);
   } catch (err) {
-    console.error(err);
+    logger.error('movimientos', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -236,7 +244,7 @@ router.get('/periodo/:periodo', async (req, res) => {
     );
     res.json(result.recordset);
   } catch (err) {
-    console.error(err);
+    logger.error('movimientos', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -260,7 +268,7 @@ router.post('/periodos/:periodo/cerrar', async (req, res) => {
                 VALUES (@periodo, 1, GETDATE(), @usuario, @notas);`);
     res.json({ ok: true, periodo, cerrado: true });
   } catch (err) {
-    console.error(err);
+    logger.error('movimientos', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -277,7 +285,7 @@ router.post('/periodos/:periodo/reabrir', async (req, res) => {
               WHERE periodo=@periodo`);
     res.json({ ok: true, periodo, cerrado: false });
   } catch (err) {
-    console.error(err);
+    logger.error('movimientos', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
