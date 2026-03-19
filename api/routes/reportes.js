@@ -58,6 +58,28 @@ router.get('/activos', async (_req, res) => {
   }
 });
 
+// All athletes (one row per athlete) — used by Deportistas maintenance page
+router.get('/todos', async (_req, res) => {
+  try {
+    const result = await query(`
+      SELECT
+        d.cod_deportista, d.num_documento, d.ap_paterno, d.ap_materno, d.nombres,
+        d.sexo, d.fecha_nac, d.num_cuenta, d.activo,
+        a.nombre AS asociacion,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM pad.PAD p WHERE p.cod_deportista = d.cod_deportista AND p.cod_estado_pad = 'ACT'
+        ) THEN 'ACT' ELSE 'RET' END AS cod_estado_pad
+      FROM pad.Deportistas d
+      LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
+      ORDER BY d.ap_paterno, d.ap_materno, d.nombres
+    `);
+    res.json(result.recordset);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // Export data to OneDrive /pad-data/ for Consulta PAD (GitHub Pages reads via Graph API)
 router.post('/exportar', async (_req, res) => {
   try {

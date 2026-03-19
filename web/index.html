@@ -9,8 +9,8 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
---bg:#F7F6F3;--surface:#FFFFFF;--surface2:#F0EFEC;--border:#E2E0DB;
---text:#1A1A18;--text2:#6B6A66;--text3:#9C9B97;
+--bg:#F5F5F0;--surface:#FFFFFF;--surface2:#EEEDE8;--border:#DDD9D3;
+--text:#1A1A18;--text2:#5F5E5A;--text3:#9C9B97;
 --accent:#C8102E;--accent-light:#FDEEF1;--accent-dark:#9E0C24;
 --green:#1D6B4F;--green-light:#E8F5EE;--green-dark:#0F4D38;
 --coral:#D85A30;--coral-light:#FFF0EB;
@@ -20,54 +20,62 @@
 --danger:#DC2626;--danger-light:#FEF2F2;
 --radius:8px;--radius-lg:12px;
 --shadow:0 1px 3px rgba(0,0,0,0.06);
---shadow-lg:0 4px 16px rgba(0,0,0,0.08);
+--shadow-md:0 2px 8px rgba(0,0,0,0.08);
+--shadow-lg:0 4px 16px rgba(0,0,0,0.10);
 --transition:0.2s cubic-bezier(0.4,0,0.2,1);
 }
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14.5px;line-height:1.5;overflow-x:hidden}
-.sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:#5C0A14;color:#fff;display:flex;flex-direction:column;z-index:100}
+/* ── SIDEBAR ── */
+.sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;background:linear-gradient(180deg,#5C0A14 0%,#3D0610 100%);color:#fff;display:flex;flex-direction:column;z-index:100}
 .sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,0.08)}
 .sidebar-header h1{font-size:15px;font-weight:700;letter-spacing:-0.3px}
-.sidebar-header p{font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px}
-.sidebar-nav{flex:1;padding:12px;overflow-y:auto}
+.sidebar-header p{font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px}
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.sidebar-nav::-webkit-scrollbar{width:4px}.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:4px}
 .nav-section{margin-bottom:16px}
-.nav-section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,0.35);padding:8px 12px;font-weight:600}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;transition:var(--transition);font-size:13px;color:rgba(255,255,255,0.65);font-weight:500}
-.nav-item:hover{background:rgba(255,255,255,0.08);color:#fff}
-.nav-item.active{background:rgba(255,255,255,0.12);color:#fff}
+.nav-section-title{font-size:9.5px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.3);padding:8px 12px;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;transition:var(--transition);font-size:13px;color:rgba(255,255,255,0.6);font-weight:500}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9)}
+.nav-item.active{background:rgba(200,16,46,0.25);color:#fff;font-weight:600}
 .nav-icon{width:18px;font-size:14px;display:flex;align-items:center;justify-content:center}
-.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.35)}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.3)}
 .api-status{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .api-dot{width:7px;height:7px;border-radius:50%;background:#6B6A66;flex-shrink:0}
 .api-dot.online{background:#22C55E;box-shadow:0 0 6px rgba(34,197,94,0.5)}
 .main{margin-left:240px;min-height:100vh}
 .offline-bar{background:#7f1d1d;color:#fca5a5;font-size:12px;padding:8px 28px;display:none}
 .offline-bar.show{display:block}
-.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
-.topbar-title{font-size:16px;font-weight:600;letter-spacing:-0.3px}
+/* ── TOPBAR ── */
+.topbar{height:56px;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:16px;font-weight:700;letter-spacing:-0.3px;color:var(--text)}
 .topbar-right{display:flex;gap:8px;align-items:center}
 .content{padding:28px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;transition:var(--transition);border:none;font-family:inherit}
-.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-dark)}.btn-primary:disabled{background:#9C9B97;cursor:not-allowed}
-.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:var(--green-dark)}
-.btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 1px 3px rgba(200,16,46,0.25)}.btn-primary:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 3px 8px rgba(200,16,46,0.3)}.btn-primary:disabled{background:#9C9B97;cursor:not-allowed;box-shadow:none;transform:none}
+.btn-green{background:var(--green);color:#fff;box-shadow:0 1px 3px rgba(29,107,79,0.25)}.btn-green:hover{background:var(--green-dark);transform:translateY(-1px)}
+.btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--surface2);border-color:#C5C3BE}
 .btn-sm{padding:6px 12px;font-size:12px}
 .btn-ghost{background:none;color:var(--text2);border:none;padding:6px 10px;cursor:pointer}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+/* ── STAT CARDS ── */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:var(--transition)}
-.stat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
-.stat-label{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:4px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:var(--transition);border-top:3px solid var(--border);box-shadow:var(--shadow)}
+.stat-card:nth-child(1){border-top-color:var(--accent)}.stat-card:nth-child(2){border-top-color:var(--blue)}.stat-card:nth-child(3){border-top-color:var(--green)}.stat-card:nth-child(4){border-top-color:var(--amber)}
+.stat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.stat-label{font-size:11.5px;color:var(--text2);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
 .stat-value{font-size:28px;font-weight:700;letter-spacing:-1px;font-family:'JetBrains Mono',monospace}
-.stat-sub{font-size:11px;margin-top:4px;color:var(--text3);font-weight:500}
+.stat-sub{font-size:11px;margin-top:6px;color:var(--text3);font-weight:500}
 .stat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px}
-.card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
-.card-header h3{font-size:14px;font-weight:600}
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface)}
+.card-header h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2)}
 table{width:100%;border-collapse:collapse}
-th{text-align:left;padding:11px 16px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.7px;color:var(--text2);font-weight:600;background:var(--surface2);border-bottom:1px solid var(--border)}
-td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:13.5px}
+th{text-align:left;padding:11px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);font-weight:700;background:var(--surface2);border-bottom:2px solid var(--border);position:sticky;top:0;z-index:2}
+td{padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:var(--surface2)}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+tbody tr:nth-child(even) td{background:rgba(0,0,0,0.015)}
+tbody tr:hover td{background:var(--accent-light)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:0.3px}
 .badge-act{background:var(--green-light);color:var(--green)}
 .badge-les{background:var(--amber-light);color:var(--amber)}
 .badge-lss{background:var(--coral-light);color:var(--coral)}
@@ -171,16 +179,17 @@ th.sortable:hover{color:var(--accent)}
 .form-section{margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
 .form-section-title{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .form-section-title .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:20px}
-.tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition)}
-.tab:hover{color:var(--text)}.tab.active{color:var(--green);border-bottom-color:var(--green)}
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:20px;gap:4px}
+.tab{padding:10px 20px;font-size:12px;font-weight:700;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition);text-transform:uppercase;letter-spacing:0.5px}
+.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab-content{display:none}.tab-content.active{display:block}
 .search-bar{display:flex;gap:8px;margin-bottom:20px}
-.search-input{flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)}
-.search-input:focus{outline:none;border-color:var(--green)}
+.search-input{flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);transition:var(--transition)}
+.search-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,16,46,0.08)}
 .filter-pills{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
-.pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:var(--transition)}
-.pill:hover,.pill.active{background:var(--green);color:#fff;border-color:var(--green)}
+.pill{padding:5px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:var(--transition);text-transform:uppercase;letter-spacing:0.5px}
+.pill:hover{background:var(--surface2);border-color:#C5C3BE}
+.pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .alert{padding:12px 16px;border-radius:var(--radius);font-size:13px;display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
 .alert-warning{background:var(--amber-light);color:var(--amber);border:1px solid #E8D5A0}
 .alert-info{background:var(--blue-light);color:var(--blue);border:1px solid #BFDBFE}
@@ -204,8 +213,8 @@ th.sortable:hover{color:var(--accent)}
 .home-logo p{font-size:14px;color:var(--text2);margin-bottom:4px}
 .home-logo small{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
 .module-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:900px;width:100%}
-.module-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden}
-.module-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);border-color:var(--accent);border-width:2px}
+.module-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.module-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-3px);border-color:var(--accent)}
 .module-card.disabled{opacity:0.6;cursor:default}
 .module-card.disabled:hover{transform:none;box-shadow:none;border-color:var(--border)}
 .module-icon{font-size:32px;margin-bottom:20px}
@@ -220,8 +229,8 @@ th.sortable:hover{color:var(--accent)}
 .home-user-bar{position:fixed;top:16px;right:24px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:12px}
 
 /* ── SIDEBAR MODULE BACK ── */
-.nav-back{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius);cursor:pointer;font-size:12px;color:rgba(255,255,255,0.45);transition:var(--transition);margin-bottom:8px;border:1px solid rgba(255,255,255,0.1)}
-.nav-back:hover{background:rgba(255,255,255,0.08);color:#fff}
+.nav-back{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius);cursor:pointer;font-size:11px;color:rgba(255,255,255,0.35);transition:var(--transition);margin-bottom:8px;border:1px solid rgba(255,255,255,0.06)}
+.nav-back:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7)}
 
 /* ── PERIOD TABLE ── */
 .period-table td .action-btns{display:flex;gap:6px;align-items:center}
@@ -250,6 +259,15 @@ th.sortable:hover{color:var(--accent)}
 
 /* ── GIRO PREVIEW ── */
 .preview-table-wrap{max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-top:12px}
+/* ── CUSTOM SCROLLBAR ── */
+.content::-webkit-scrollbar,.modal::-webkit-scrollbar,.preview-table-wrap::-webkit-scrollbar{width:6px}
+.content::-webkit-scrollbar-thumb,.modal::-webkit-scrollbar-thumb,.preview-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
+.content::-webkit-scrollbar-thumb:hover,.modal::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+/* ── MODAL STICKY FOOTER ── */
+.modal-footer{position:sticky;bottom:0;z-index:3}
+/* ── RESPONSIVE ── */
+@media(max-width:1200px){.stats-grid{grid-template-columns:repeat(2,1fr)}.module-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.sidebar{width:200px}.main{margin-left:200px}.form-cols-3{grid-template-columns:1fr}.form-col{border-right:none;border-bottom:1px solid var(--border)}.form-col:last-child{border-bottom:none}}
 </style>
 </head>
 <body>
@@ -296,7 +314,7 @@ th.sortable:hover{color:var(--accent)}
     <p>UF-PMD / DINADAF / IPD</p>
   </div>
   <nav class="sidebar-nav">
-    <div class="nav-back" onclick="goHome()">&#8592; Inicio</div>
+    <div class="nav-back" id="nav-back-btn" onclick="goHome()">&#8592; Modulos</div>
 
     <!-- Nav: Gestion PAD -->
     <div id="nav-gestion" style="display:none">
@@ -313,8 +331,8 @@ th.sortable:hover{color:var(--accent)}
       <div class="nav-section">
         <div class="nav-section-title">Mantenimiento</div>
         <div class="nav-item" onclick="showPage('deportistas',this)"><span class="nav-icon">&#9679;</span>Deportistas</div>
+        <div class="nav-item" onclick="showPage('montos',this)"><span class="nav-icon">&#164;</span>Montos de referencia</div>
         <div class="nav-item" onclick="showPage('orgs',this)"><span class="nav-icon">&#9830;</span>Organizaciones deportivas</div>
-        <div class="nav-item" onclick="showPage('catalogos',this)"><span class="nav-icon">&#9881;</span>Catalogos</div>
       </div>
     </div>
 
@@ -328,7 +346,6 @@ th.sortable:hover{color:var(--accent)}
       <div class="nav-section">
         <div class="nav-section-title">Referencia</div>
         <div class="nav-item" onclick="showPage('orgs',this)"><span class="nav-icon">&#9830;</span>Organizaciones deportivas</div>
-        <div class="nav-item" onclick="showPage('catalogos',this)"><span class="nav-icon">&#9881;</span>Niveles y estados</div>
       </div>
     </div>
   </nav>
@@ -367,7 +384,7 @@ th.sortable:hover{color:var(--accent)}
         <h2 style="font-size:20px;font-weight:700;margin-bottom:4px" id="module-welcome-title">Gestion PAD</h2>
         <p style="color:var(--text2);font-size:13px">Programa de Apoyo al Deportista &mdash; Directiva N° 003-2025-IPD/DINADAF</p>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;max-width:900px;margin-bottom:24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;max-width:900px;margin-bottom:24px" class="stats-grid">
         <div class="stat-card" style="cursor:pointer" onclick="showPage('cambios',document.getElementById('nav-cambios'))">
           <div class="stat-label">Cambios PAD del mes</div>
           <div class="stat-value" id="k-cambios-mes">—</div>
@@ -444,17 +461,14 @@ th.sortable:hover{color:var(--accent)}
       </div>
       <div class="filter-pills" id="pills-dep">
         <span class="pill active" data-f="">Todos</span>
-        <span class="pill" data-f="PAD1">PAD I</span>
-        <span class="pill" data-f="PAD2">PAD II</span>
-        <span class="pill" data-f="PNM">PNM</span>
-        <span class="pill" data-f="ACT">Activos</span>
+        <span class="pill" data-f="ACT">Activos en PAD</span>
         <span class="pill" data-f="RET">Retirados</span>
       </div>
       <div class="card">
         <div class="card-header"><h3>Deportistas <span id="dep-count" style="font-weight:400;color:var(--text3);font-size:12px"></span></h3></div>
         <table>
-          <thead><tr><th>DNI</th><th>Deportista</th><th>Federacion</th><th>Programa</th><th>Nivel</th><th>Estado</th><th></th></tr></thead>
-          <tbody id="t-dep"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
+          <thead><tr><th>DNI</th><th class="sortable" onclick="sortTable('dep','nombre')">Deportista</th><th class="sortable" onclick="sortTable('dep','asociacion')">Federacion</th><th class="sortable" onclick="sortTable('dep','sexo')">Sexo</th><th class="sortable" onclick="sortTable('dep','estado')">Estado PAD</th><th></th></tr></thead>
+          <tbody id="t-dep"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -523,6 +537,7 @@ th.sortable:hover{color:var(--accent)}
           <select id="sel-tipo-cons" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
             <option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
           </select>
+          <input type="month" id="inp-periodo-cons-tec" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
           <button class="btn btn-primary" onclick="generarConsolidado()">Ver consolidado</button>
           <span style="border-left:1px solid var(--border);height:24px"></span>
           <button class="btn btn-secondary btn-sm" onclick="descargarReporte('pdf','consolidado-tecnico')">&#8595; PDF</button>
@@ -531,25 +546,27 @@ th.sortable:hover{color:var(--accent)}
         <div class="card">
           <div class="card-header"><h3 id="cons-titulo">Consolidado Tecnico — PAD I</h3><span id="cons-count" style="font-size:12px;color:var(--text3)"></span></div>
           <table>
-            <thead><tr><th>N</th><th>Federacion</th><th>Deportista</th><th>DNI</th><th>Nivel</th><th>Monto mensual</th></tr></thead>
-            <tbody id="t-consolidado"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Seleccione tipo y haga clic en &ldquo;Ver consolidado&rdquo;</td></tr></tbody>
+            <thead><tr><th>N</th><th class="sortable" onclick="sortTable('cons','asociacion')">Federacion</th><th class="sortable" onclick="sortTable('cons','nombre')">Deportista</th><th>DNI</th><th class="sortable" onclick="sortTable('cons','sexo')">Sexo</th><th class="sortable" onclick="sortTable('cons','nivel')">Nivel</th><th class="sortable" onclick="sortTable('cons','fecha_ingreso')">F. Ingreso</th></tr></thead>
+            <tbody id="t-consolidado"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Seleccione tipo y haga clic en &ldquo;Ver consolidado&rdquo;</td></tr></tbody>
           </table>
         </div>
       </div>
       <div class="tab-content" id="tab-eco">
         <div class="alert alert-info">&#9432; Incluye cuenta bancaria y datos de apoderado para menores. Requiere API local activa.</div>
-        <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
           <select id="sel-tipo-eco" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
             <option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
           </select>
+          <input type="month" id="inp-periodo-cons-eco" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
           <button class="btn btn-primary" onclick="generarEconomico()">Ver consolidado</button>
           <span style="border-left:1px solid var(--border);height:24px"></span>
           <button class="btn btn-secondary btn-sm" onclick="descargarReporte('pdf','consolidado-economico','sel-tipo-eco')">&#8595; PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="descargarReporte('excel','consolidado-economico','sel-tipo-eco')">&#8595; Excel</button>
         </div>
         <div class="card">
           <div class="card-header"><h3 id="eco-titulo">Consolidado Economico — PAD I</h3><span id="eco-count" style="font-size:12px;color:var(--text3)"></span></div>
           <table>
-            <thead><tr><th>N</th><th>Federacion</th><th>Deportista</th><th>DNI</th><th>N° Cuenta</th><th>Monto</th></tr></thead>
+            <thead><tr><th>N</th><th class="sortable" onclick="sortTable('eco','asociacion')">Federacion</th><th class="sortable" onclick="sortTable('eco','nombre')">Deportista</th><th>DNI</th><th>N° Cuenta</th><th class="sortable" onclick="sortTable('eco','monto')">Monto</th></tr></thead>
             <tbody id="t-economico"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Seleccione tipo y haga clic en &ldquo;Ver consolidado&rdquo;</td></tr></tbody>
           </table>
         </div>
@@ -594,41 +611,19 @@ th.sortable:hover{color:var(--accent)}
       </div>
     </div>
 
-    <!-- CATALOGOS -->
-    <div class="page" id="page-catalogos">
-      <div class="tabs">
-        <div class="tab active" onclick="switchTab(this,'tab-fed')">Federaciones</div>
-        <div class="tab" onclick="switchTab(this,'tab-niv')">Niveles</div>
-        <div class="tab" onclick="switchTab(this,'tab-est')">Estados</div>
-      </div>
-      <div class="tab-content active" id="tab-fed">
-        <div class="card"><table>
-          <thead><tr><th>Cod.</th><th>Nombre</th></tr></thead>
-          <tbody id="t-asoc"><tr><td colspan="2" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
-        </table></div>
-      </div>
-      <div class="tab-content" id="tab-niv">
-        <div class="card"><table>
-          <thead><tr><th>Codigo</th><th>Nivel</th><th>Programa</th></tr></thead>
-          <tbody id="t-niv"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
-        </table></div>
-      </div>
-      <div class="tab-content" id="tab-est">
-        <div class="card"><table>
-          <thead><tr><th>Codigo</th><th>Estado</th><th>Descripcion</th></tr></thead>
-          <tbody>
-            <tr><td><span class="badge badge-act">ACT</span></td><td>Activo</td><td>Recibe subvencion economica mensual</td></tr>
-            <tr><td><span class="badge badge-les">LES</span></td><td>Lesionado</td><td>Mantiene beneficio hasta 6 meses (num. 9.1.4.1.6)</td></tr>
-            <tr><td><span class="badge badge-lss">LSS</span></td><td>Lic. sin subsidio</td><td>Solo seguro de salud, hasta 6 meses adicionales</td></tr>
-            <tr><td><span class="badge badge-ret">RET</span></td><td>Retirado</td><td>Sin beneficios activos</td></tr>
-          </tbody>
-        </table></div>
-      </div>
-    </div>
+
 
     <!-- MONTOS -->
     <div class="page" id="page-montos">
-      <div class="empty-state"><div class="empty-state-icon">&#9830;</div><p>Montos de referencia — proximo</p></div>
+      <div class="alert alert-info" style="max-width:700px">&#9432; Montos de referencia por nivel y periodo. Los periodos anteriores estan bloqueados para evitar edicion accidental. Solo el periodo vigente es editable.</div>
+      <div class="card" style="max-width:700px">
+        <div class="card-header"><h3>Montos de referencia</h3><span style="font-size:12px;color:var(--text3)">2,172 registros cargados (2013-2026)</span></div>
+        <div style="padding:40px 20px;text-align:center;color:var(--text3)">
+          <div style="font-size:32px;opacity:0.3;margin-bottom:12px">&#164;</div>
+          <p style="font-size:13px;margin-bottom:4px">Modulo de edicion de montos en desarrollo</p>
+          <p style="font-size:11px">Actualmente los montos se administran directamente en la base de datos</p>
+        </div>
+      </div>
     </div>
 
     <!-- NOMINA PAD (Consulta PAD — solo lectura) -->
@@ -648,7 +643,7 @@ th.sortable:hover{color:var(--accent)}
           <span style="font-size:12px;color:var(--text3)">Solo lectura</span>
         </div>
         <table>
-          <thead><tr><th>DNI</th><th>Deportista</th><th>Federacion</th><th>Programa</th><th>Nivel</th><th>Estado</th></tr></thead>
+          <thead><tr><th>DNI</th><th class="sortable" onclick="sortTable('nomina','nombre')">Deportista</th><th class="sortable" onclick="sortTable('nomina','asociacion')">Federacion</th><th class="sortable" onclick="sortTable('nomina','programa')">Programa</th><th class="sortable" onclick="sortTable('nomina','nivel')">Nivel</th><th class="sortable" onclick="sortTable('nomina','estado')">Estado</th></tr></thead>
           <tbody id="t-nomina"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
         </table>
       </div>
@@ -982,7 +977,7 @@ th.sortable:hover{color:var(--accent)}
 </div>
 
 <script>
-// Si se accede desde la API (puerto 3001), usar URLs relativas; si desde GitHub Pages, apuntar a localhost
+// Si se accede desde la API local (puerto 8080), usar URLs relativas; si desde GitHub Pages, apuntar a localhost
 const IS_LOCAL_API = location.port === '8080';
 const API = IS_LOCAL_API ? '' : 'http://localhost:8080';
 let online = false;
@@ -1249,7 +1244,7 @@ async function loadResumen() {
 // ── DEPORTISTAS ──────────────────────────────────────────────
 async function loadDep() {
   let d;
-  try { d = online ? await apiGet('/api/reportes/activos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { d = null; }
+  try { d = online ? await apiGet('/api/reportes/todos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { d = null; }
   depData = d || [];
   renderDep(depData);
   // Poblar select de asociaciones en modal de edición
@@ -1269,15 +1264,14 @@ async function loadDep() {
 function renderDep(data) {
   document.getElementById('dep-count').textContent = data.length + ' registros';
   const tbody = document.getElementById('t-dep');
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>'; return; }
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>'; return; }
   tbody.innerHTML = data.map(r => `<tr>
-    <td class="mono">${r.num_documento}</td>
+    <td class="mono">${r.num_documento||'—'}</td>
     <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
     <td>${r.asociacion||'—'}</td>
-    <td><span class="badge badge-${(r.cod_tipo_pad||'').toLowerCase()}">${(r.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td>
-    <td>${r.nivel_desc||r.cod_nivel||'—'}</td>
-    <td><span class="badge badge-${(r.cod_estado_pad||'act').toLowerCase()}">${r.cod_estado_pad||'ACT'}</span></td>
-    <td><button class="btn-edit" onclick="verDep(${r.cod_deportista||0})">&#9998; Editar</button></td></tr>`).join('');
+    <td style="text-align:center">${r.sexo||'—'}</td>
+    <td><span class="badge badge-${(r.cod_estado_pad||'ret').toLowerCase()}">${r.cod_estado_pad==='ACT'?'Activo':'Retirado'}</span></td>
+    <td>${online?`<button class="btn-edit" onclick="verDep(${r.cod_deportista||0})">&#9998; Editar</button>`:''}</td></tr>`).join('');
 }
 
 function filterDep() {
@@ -1475,6 +1469,40 @@ function sortDetalle(col) {
   renderDetalle(sorted);
 }
 
+// ── GENERIC TABLE SORTING ─────────────────────────────────
+let tableSortState = {};
+function sortTable(table, col) {
+  if (!tableSortState[table]) tableSortState[table] = { col: null, asc: true };
+  const st = tableSortState[table];
+  if (st.col === col) st.asc = !st.asc;
+  else { st.col = col; st.asc = true; }
+
+  const getVal = (r, col) => {
+    switch(col) {
+      case 'nombre': return (r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)||'').toLowerCase();
+      case 'asociacion': return (r.asociacion||'').toLowerCase();
+      case 'programa': return (r.cod_tipo_pad||'').toLowerCase();
+      case 'nivel': return (r.nivel_desc||r.cod_nivel||'').toLowerCase();
+      case 'estado': return (r.cod_estado_pad||'').toLowerCase();
+      case 'sexo': return (r.sexo||'').toLowerCase();
+      case 'fecha_ingreso': return r.fecha_ingreso||'';
+      case 'monto': return parseFloat(r.monto_soles||0);
+      default: return (r[col]||'').toString().toLowerCase();
+    }
+  };
+
+  const sorter = (a,b) => {
+    const va = getVal(a, col), vb = getVal(b, col);
+    const cmp = typeof va === 'number' ? va - vb : va.toString().localeCompare(vb.toString());
+    return st.asc ? cmp : -cmp;
+  };
+
+  if (table === 'dep') { depData.sort(sorter); filterDep(); }
+  else if (table === 'nomina') { nominaData.sort(sorter); filterNomina(); }
+  else if (table === 'cons') { consData.sort(sorter); renderConsTable(); }
+  else if (table === 'eco') { ecoData.sort(sorter); renderEcoTable(); }
+}
+
 function filterDetalle() {
   const q = document.getElementById('q-detalle').value.toLowerCase();
   renderDetalle(periodoDetalleData.filter(r => {
@@ -1600,7 +1628,11 @@ function currentPeriodo() {
 function descargarReporte(format, report, selId) {
   if (!online) { alert('API local no disponible'); return; }
   const tipo = document.getElementById(selId || 'sel-tipo-cons')?.value || 'PAD1';
-  const periodo = currentPeriodo();
+  // Use the corresponding period input if available
+  const periodoInput = report.includes('economico')
+    ? document.getElementById('inp-periodo-cons-eco')
+    : document.getElementById('inp-periodo-cons-tec');
+  const periodo = periodoInput?.value ? periodoInput.value.replace('-','') : currentPeriodo();
   window.open(`${API}/api/${format}/${report}?tipo=${tipo}&periodo=${periodo}`, '_blank');
 }
 
@@ -1749,15 +1781,19 @@ async function loadCats() {
 }
 
 // ── CONSOLIDADO ECONOMICO ─────────────────────────────────
+let ecoData = [];
 async function generarEconomico() {
   let d;
   try { d = online ? await apiGet('/api/reportes/activos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { return; }
   if (!d) return;
   const tipo = document.getElementById('sel-tipo-eco').value;
-  const filt = tipo ? d.filter(r => r.cod_tipo_pad === tipo) : d;
+  ecoData = tipo ? d.filter(r => r.cod_tipo_pad === tipo) : d;
   document.getElementById('eco-titulo').textContent = 'Consolidado Economico ' + (tipo ? tipo.replace('PAD1','PAD I').replace('PAD2','PAD II') : 'General');
-  document.getElementById('eco-count').textContent = filt.length + ' registros';
-  document.getElementById('t-economico').innerHTML = filt.map((r,i) => `<tr>
+  renderEcoTable();
+}
+function renderEcoTable() {
+  document.getElementById('eco-count').textContent = ecoData.length + ' registros';
+  document.getElementById('t-economico').innerHTML = ecoData.map((r,i) => `<tr>
     <td>${i+1}</td><td style="font-size:11px">${r.asociacion||'—'}</td>
     <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
     <td class="mono" style="font-size:12px">${r.num_documento}</td>
@@ -1775,20 +1811,25 @@ function fillNiveles() {
 }
 
 // ── CONSOLIDADO ──────────────────────────────────────────────
+let consData = [];
 async function generarConsolidado() {
   let d;
   try { d = online ? await apiGet('/api/reportes/activos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { return; }
   if (!d) return;
   const tipo = document.getElementById('sel-tipo-cons').value;
-  const filt = tipo ? d.filter(r => r.cod_tipo_pad === tipo) : d;
+  consData = tipo ? d.filter(r => r.cod_tipo_pad === tipo) : d;
   document.getElementById('cons-titulo').textContent = 'Consolidado Tecnico — ' + (tipo ? tipo.replace('PAD1','PAD I').replace('PAD2','PAD II') : 'General');
-  document.getElementById('cons-count').textContent = filt.length + ' registros';
-  document.getElementById('t-consolidado').innerHTML = filt.map((r,i) => `<tr>
+  renderConsTable();
+}
+function renderConsTable() {
+  document.getElementById('cons-count').textContent = consData.length + ' registros';
+  document.getElementById('t-consolidado').innerHTML = consData.map((r,i) => `<tr>
     <td>${i+1}</td><td style="font-size:11px">${r.asociacion||'—'}</td>
     <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
     <td class="mono" style="font-size:12px">${r.num_documento}</td>
+    <td style="text-align:center">${r.sexo||'—'}</td>
     <td>${r.nivel_desc||r.cod_nivel}</td>
-    <td class="mono">S/ ${r.monto_soles?Number(r.monto_soles).toLocaleString('es-PE',{minimumFractionDigits:2}):'—'}</td></tr>`).join('');
+    <td style="font-size:12px">${r.fecha_ingreso?new Date(r.fecha_ingreso).toLocaleDateString('es-PE'):(r.es_permanente?'Permanente':'—')}</td></tr>`).join('');
 }
 
 // ── NOMINA PAD (Consulta, solo lectura) ───────────────────
@@ -2010,6 +2051,9 @@ function enterModule(mod) {
   document.getElementById('home-screen').classList.add('hidden');
   document.getElementById('sidebar').style.display = 'flex';
   document.getElementById('main-app').style.display = 'flex';
+  // Hide "← Modulos" on local API (sidebar "Inicio" item serves same purpose)
+  const navBack = document.getElementById('nav-back-btn');
+  if (navBack) navBack.style.display = IS_LOCAL_API ? 'none' : 'flex';
 
   // Show correct sidebar navigation
   document.getElementById('nav-gestion').style.display  = mod === 'gestion'  ? 'block' : 'none';
@@ -2071,14 +2115,14 @@ function showPage(id, el) {
   document.getElementById('page-'+id)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el?.classList.add('active');
-  const titles = {home:'Gestion PAD',dashboard:'Dashboard',deportistas:'Deportistas',nomina:'Nomina PAD',cambios:'Cambios PAD',consolidados:'Consolidados',giros:'Giros',catalogos:'Catalogos',orgs:'Organizaciones deportivas',montos:'Montos de referencia'};
+  const titles = {home:'Gestion PAD',dashboard:'Dashboard',deportistas:'Deportistas',nomina:'Nomina PAD',cambios:'Cambios PAD',consolidados:'Consolidados',giros:'Giros',orgs:'Organizaciones deportivas',montos:'Montos de referencia'};
   document.getElementById('page-title').textContent = titles[id]||id;
   const btnNuevo = document.getElementById('btn-nuevo');
   if (btnNuevo) btnNuevo.style.display = 'none'; // btn is inside each page now
   if (id==='deportistas') loadDep();
   if (id==='nomina') loadNomina();
   if (id==='cambios') { volverAPeriodos && (periodoDetalle=null); document.getElementById('cambios-periodos-view').style.display='block'; document.getElementById('cambios-detalle-view').style.display='none'; loadCambios(); }
-  if (id==='catalogos'||id==='orgs') loadCats();
+  if (id==='orgs') loadCats();
   if (id === 'orgs') loadOrgs();
   if (id==='home') loadHomeModule();
 }
@@ -2103,7 +2147,7 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 // Set default periods
 const now = new Date();
 const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-['inp-periodo','inp-periodo-cambios','inp-periodo-giro'].forEach(id => {
+['inp-periodo','inp-periodo-cambios','inp-periodo-giro','inp-periodo-cons-tec','inp-periodo-cons-eco'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.value = defPer;
 });
