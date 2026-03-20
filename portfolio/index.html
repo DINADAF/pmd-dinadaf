@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="mock.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -210,11 +211,6 @@ th.sortable:hover{color:var(--accent)}
 /* ── HOME / MODULE SELECTOR ── */
 .home-screen{position:fixed;inset:0;background:var(--bg);z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;overflow-y:auto}
 .home-screen.hidden{display:none}
-/* ── SPLASH SCREEN (local API) ── */
-.splash-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#5C0A14 0%,#8B1A2B 40%,#2D0509 100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s ease;}
-.splash-overlay.fade-out{opacity:0;pointer-events:none}
-.splash-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:24px}
-@keyframes spin{to{transform:rotate(360deg)}}
 .home-logo{text-align:center;margin-bottom:48px}
 .home-logo h1{font-size:28px;font-weight:700;letter-spacing:-0.5px;color:var(--text);margin-bottom:6px}
 .home-logo p{font-size:14px;color:var(--text2);margin-bottom:4px}
@@ -280,13 +276,6 @@ th.sortable:hover{color:var(--accent)}
 <body>
 
 <!-- HOME SCREEN — module selector (shown after login, before entering a module) -->
-<!-- SPLASH SCREEN (solo visible en API local, desaparece en 1.5s) -->
-<div class="splash-overlay" id="splash-overlay" style="display:none">
-  <div class="splash-spinner"></div>
-  <div style="color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.7;margin-bottom:10px">Instituto Peruano del Deporte</div>
-  <div style="color:#fff;font-size:24px;font-weight:700;letter-spacing:-0.5px">Sistema de Gestión PMD</div>
-  <div style="color:rgba(255,255,255,.5);font-size:12px;margin-top:8px">Cargando módulo...</div>
-</div>
 <div class="home-screen" id="home-screen">
   <div class="home-user-bar">
     <span id="home-user-email" style="color:var(--text2)"></span>
@@ -1606,9 +1595,8 @@ async function cerrarPeriodoActual() {
 
 function descargarCambiosPeriodo(format, periodo) {
   if (!online) { alert('API local no disponible'); return; }
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  if (format === 'pdf') window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}${k}`, '_blank');
-  else window.open(`${API}/api/excel/consolidado-tecnico?periodo=${periodo}${k}`, '_blank');
+  if (format === 'pdf') window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}`, '_blank');
+  else window.open(`${API}/api/excel/consolidado-tecnico?periodo=${periodo}`, '_blank');
 }
 
 function abrirNuevoCambio() {
@@ -1720,16 +1708,14 @@ async function descargarReporte(format, report, selId) {
     }
   }
 
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  window.open(`${API}/api/${format}/${report}?tipo=${tipo}&periodo=${periodo}${k}`, '_blank');
+  window.open(`${API}/api/${format}/${report}?tipo=${tipo}&periodo=${periodo}`, '_blank');
 }
 
 function descargarCambiosPdf() {
   if (!online) { alert('API local no disponible'); return; }
   const inp = document.getElementById('inp-periodo-cambios');
   const periodo = inp?.value ? inp.value.replace('-','') : currentPeriodo();
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}${k}`, '_blank');
+  window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}`, '_blank');
 }
 
 function descargarGiro() {
@@ -1737,8 +1723,7 @@ function descargarGiro() {
   const tipo = document.getElementById('sel-tipo-giro')?.value || 'PAD1';
   const inp = document.getElementById('inp-periodo-giro');
   const periodo = inp?.value ? inp.value.replace('-','') : currentPeriodo();
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  window.open(`${API}/api/excel/giro?tipo=${tipo}&periodo=${periodo}${k}`, '_blank');
+  window.open(`${API}/api/excel/giro?tipo=${tipo}&periodo=${periodo}`, '_blank');
 }
 
 // ── ORGANIZACIONES ──────────────────────────────────────────
@@ -2269,12 +2254,6 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
 
 // ── INIT ──────────────────────────────────────────────────
 (async () => {
-  // Splash screen para API local: mostrarlo inmediatamente
-  if (IS_LOCAL_API) {
-    const splash = document.getElementById('splash-overlay');
-    if (splash) splash.style.display = 'flex';
-  }
-
   // Manejar redirect de MSAL si viene de un login previo (no bloqueante)
   if (msalApp) {
     try {
@@ -2299,16 +2278,29 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   // Si es la API local, entrar directo a Gestión PAD sin pasar por el home screen
   if (IS_LOCAL_API && online) {
     enterModule('gestion');
-    // Desvanecer splash después de 1.5s
-    setTimeout(() => {
-      const splash = document.getElementById('splash-overlay');
-      if (splash) {
-        splash.classList.add('fade-out');
-        setTimeout(() => splash.style.display = 'none', 700);
-      }
-    }, 1500);
   }
 })();
 </script>
+
+<!-- MODAL REPORTE PORTFOLIO -->
+<div class="modal-overlay" id="modal-mock-reporte" style="display:none; align-items:center; justify-content:center; z-index: 99999;">
+  <div class="modal" style="width:1000px; max-width:95vw; display:flex; flex-direction:column; max-height:90vh;">
+    <div class="modal-header">
+      <h2 id="mock-modal-title">Vista Previa (Ejemplo del Mock)</h2>
+      <button class="btn-close" onclick="closeModal('modal-mock-reporte')">&times;</button>
+    </div>
+    <div class="modal-body" style="text-align:center; padding: 20px; overflow-y:auto;">
+      <p style="margin-bottom: 20px; color: var(--text2); background: var(--surface2); padding: 12px; border-radius: 8px;"><em>Visualización de maqueta estática. Ponga sus propias capturas en <code>portfolio/img/mock_pdf.png</code> y <code>portfolio/img/mock_excel.png</code>.</em></p>
+      <img id="mock-modal-img" src="" alt="Vista Previa de Reporte" style="max-width: 100%; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      
+      <div style="background:#5C0A14; color:white; width:100%; height:400px; border-radius:8px; display:none; flex-direction:column; align-items:center; justify-content:center;">
+        <span style="font-size:48px; margin-bottom:16px;">🖼️</span>
+        <h3 style="font-size:20px; font-weight:600;">[ IMAGEN NO ENCONTRADA ]</h3>
+        <p style="opacity:0.7; font-size:14px; margin-top:8px;">Añade tu propia imagen en la carpeta <code>portfolio/img/</code> con el nombre correspondiente para mostrarla aquí.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
