@@ -490,6 +490,7 @@ th.sortable:hover{color:var(--accent)}
           <thead><tr><th>DNI</th><th class="sortable" onclick="sortTable('dep','nombre')">Deportista</th><th class="sortable" onclick="sortTable('dep','asociacion')">Federacion</th><th class="sortable" onclick="sortTable('dep','sexo')">Sexo</th><th class="sortable" onclick="sortTable('dep','estado')">Estado PAD</th><th></th></tr></thead>
           <tbody id="t-dep"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr></tbody>
         </table>
+        <div id="dep-pagination" style="display:flex; justify-content:center; padding: 16px; gap: 8px;"></div>
       </div>
     </div>
 
@@ -1315,11 +1316,17 @@ async function loadDashboardCharts() {
 }
 
 // ── DEPORTISTAS ──────────────────────────────────────────────
+let depPage = 1;
+const DEP_PER_PAGE = 25;
+let depFiltered = [];
+
 async function loadDep() {
   let d;
   try { d = online ? await apiGet('/api/reportes/todos') : (await staticJson('activos.json'))?.data ?? await staticJson('activos.json'); } catch { d = null; }
   depData = d || [];
-  renderDep(depData);
+  depFiltered = [...depData];
+  depPage = 1;
+  renderDep();
   // Poblar select de asociaciones en modal de edición
   if (cats.asociaciones && cats.asociaciones.length) {
     const sel = document.getElementById('ed-asoc');
@@ -1334,28 +1341,60 @@ async function loadDep() {
   }
 }
 
-function renderDep(data) {
-  document.getElementById('dep-count').textContent = data.length + ' registros';
+function setDepPage(page) {
+  depPage = page;
+  renderDep();
+}
+
+function renderDep() {
+  document.getElementById('dep-count').textContent = depFiltered.length + ' registros';
   const tbody = document.getElementById('t-dep');
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>'; return; }
-  tbody.innerHTML = data.map(r => `<tr>
+  const pag = document.getElementById('dep-pagination');
+  
+  if (!depFiltered.length) { 
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>'; 
+    pag.innerHTML = '';
+    return; 
+  }
+  
+  const totalPages = Math.ceil(depFiltered.length / DEP_PER_PAGE);
+  if (depPage < 1) depPage = 1;
+  if (depPage > totalPages) depPage = totalPages;
+  
+  const start = (depPage - 1) * DEP_PER_PAGE;
+  const pageData = depFiltered.slice(start, start + DEP_PER_PAGE);
+  
+  tbody.innerHTML = pageData.map(r => `<tr>
     <td class="mono">${r.num_documento||'—'}</td>
     <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
     <td>${r.asociacion||'—'}</td>
     <td style="text-align:center">${r.sexo||'—'}</td>
     <td><span class="badge badge-${(r.cod_estado_pad||'ret').toLowerCase()}">${r.cod_estado_pad==='ACT'?'Activo':'Retirado'}</span></td>
     <td>${online?`<button class="btn-edit" onclick="verDep(${r.cod_deportista||0})">&#9998; Editar</button>`:''}</td></tr>`).join('');
+    
+  // Render controls
+  let pagHtml = '';
+  if (totalPages > 1) {
+    pagHtml += `<button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="setDepPage(1)" ${depPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
+    pagHtml += `<button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="setDepPage(${depPage - 1})" ${depPage === 1 ? 'disabled' : ''}>&lsaquo;</button>`;
+    pagHtml += `<span style="font-size:12px; align-self:center; color:var(--text2);">Pág ${depPage} de ${totalPages}</span>`;
+    pagHtml += `<button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="setDepPage(${depPage + 1})" ${depPage === totalPages ? 'disabled' : ''}>&rsaquo;</button>`;
+    pagHtml += `<button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="setDepPage(${totalPages})" ${depPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
+  }
+  pag.innerHTML = pagHtml;
 }
 
 function filterDep() {
   const q = document.getElementById('q-dep').value.toLowerCase();
   const f = depFilter;
-  renderDep(depData.filter(r => {
+  depFiltered = depData.filter(r => {
     const nombre = (r.deportista||(r.ap_paterno+' '+r.ap_materno+' '+r.nombres)||'').toLowerCase();
     const match = !q || nombre.includes(q) || (r.num_documento||'').includes(q) || (r.asociacion||'').toLowerCase().includes(q);
     const filt = !f || r.cod_tipo_pad === f || r.cod_estado_pad === f;
     return match && filt;
-  }));
+  });
+  depPage = 1;
+  renderDep();
 }
 
 function verDep(cod) {
