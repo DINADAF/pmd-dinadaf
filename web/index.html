@@ -1732,11 +1732,20 @@ function descargarCambiosPdf() {
   window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}${k}`, '_blank');
 }
 
-function descargarGiro() {
+async function descargarGiro() {
   if (!online) { alert('API local no disponible'); return; }
   const tipo = document.getElementById('sel-tipo-giro')?.value || 'PAD1';
   const inp = document.getElementById('inp-periodo-giro');
   const periodo = inp?.value ? inp.value.replace('-','') : currentPeriodo();
+  // Validar que el periodo esté cerrado
+  try {
+    const perList = await apiGet('/api/movimientos/periodos');
+    const pData = perList.find(p => p.periodo === periodo);
+    if (!pData || !pData.cerrado) {
+      alert(`❌ El periodo ${periodo.slice(0,4)}-${periodo.slice(4,6)} no está cerrado.\nSolo se pueden generar giros de periodos finalizados y cerrados en Cambio PAD.`);
+      return;
+    }
+  } catch(e) { console.warn('Period verification failed', e); }
   const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
   window.open(`${API}/api/excel/giro?tipo=${tipo}&periodo=${periodo}${k}`, '_blank');
 }
