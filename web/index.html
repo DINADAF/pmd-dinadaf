@@ -128,13 +128,13 @@ tbody tr:hover td{background:var(--accent-light)}
 /* Module cards spring */
 .module-card{transition:box-shadow var(--dur-mod) var(--ease-spr),transform var(--dur-mod) var(--ease-spr),border-color var(--dur-fast) var(--ease-std)}
 .module-card:hover:not(.disabled){box-shadow:0 12px 32px rgba(0,0,0,.12);transform:translateY(-3px)}
-/* Modal con blur */
-.modal-overlay{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity var(--dur-mod) var(--ease-std)}
+/* Modal sin blur (mejor rendimiento en GPUs básicas) */
+.modal-overlay{background:rgba(0,0,0,0.65);opacity:0;transition:opacity var(--dur-mod) var(--ease-std)}
 .modal-overlay.show{opacity:1}
 .modal-overlay.closing{opacity:0;pointer-events:none}
-.modal{transform:translateY(14px) scale(.98);opacity:0;transition:transform var(--dur-mod) var(--ease-spr),opacity var(--dur-mod) var(--ease-dec)}
+.modal{transform:translateY(8px) scale(.98);opacity:0;transition:transform var(--dur-fast) var(--ease-spr),opacity var(--dur-fast) var(--ease-dec)}
 .modal-overlay.show .modal{transform:translateY(0) scale(1);opacity:1}
-.modal-overlay.closing .modal{transform:translateY(8px) scale(.98);opacity:0;transition:transform var(--dur-fast) var(--ease-std),opacity var(--dur-fast) var(--ease-std)}
+.modal-overlay.closing .modal{transform:translateY(4px) scale(.98);opacity:0;transition:transform var(--dur-fast) var(--ease-std),opacity var(--dur-fast) var(--ease-std)}
 .modal-close{transition:background var(--dur-fast),color var(--dur-fast),transform var(--dur-fast) var(--ease-spr)}
 .modal-close:hover{background:var(--danger-light);color:var(--danger);transform:rotate(90deg)}
 /* API dot pulse */
