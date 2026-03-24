@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
-const { query, sql } = require('../db');
+const { query } = require('../db');
 const logger = require('../logger');
 const { validarParamsReporte } = require('../middleware/validate');
 
@@ -32,7 +32,7 @@ router.get('/giro', async (req, res) => {
         d.cod_deportista, d.num_documento, d.tipo_documento,
         d.ap_paterno, d.ap_materno, d.nombres,
         d.num_cuenta, d.fecha_nac,
-        CASE WHEN DATEDIFF(YEAR, d.fecha_nac, GETDATE()) < 18 THEN 1 ELSE 0 END AS es_menor,
+        CASE WHEN EXTRACT(YEAR FROM AGE(now(), d.fecha_nac)) < 18 THEN 1 ELSE 0 END AS es_menor,
         p.cod_tipo_pad, p.cod_nivel,
         n.nombre_nivel, a.nombre AS asociacion,
         mr.monto_soles,
@@ -44,14 +44,11 @@ router.get('/giro', async (req, res) => {
       JOIN cat.Nivel n ON p.cod_nivel = n.cod_nivel
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
       LEFT JOIN pad.montos_referencia mr ON mr.cod_nivel = p.cod_nivel
-        AND @periodo BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
+        AND $1::VARCHAR BETWEEN mr.periodo_desde AND COALESCE(mr.periodo_hasta, '999999')
       LEFT JOIN pad.Apoderados ap ON d.cod_deportista = ap.cod_deportista
-      WHERE p.cod_estado_pad = 'ACT' AND p.cod_tipo_pad = @tipo
+      WHERE p.cod_estado_pad = 'ACT' AND p.cod_tipo_pad = $2::VARCHAR
       ORDER BY a.nombre, d.ap_paterno, d.ap_materno
-    `, [
-      { name: 'tipo', type: sql.VarChar(5), value: tipo },
-      { name: 'periodo', type: sql.VarChar(6), value: periodo }
-    ]);
+    `, [periodo, tipo]);
 
     const rows = result.recordset;
 
@@ -303,7 +300,7 @@ router.get('/consolidado-tecnico', async (req, res) => {
     if (vErr) return res.status(400).json({ error: vErr });
     const subtipoLabel = tipo === 'PAD1' ? 'I' : tipo === 'PAD2' ? 'II' : '(PNM)';
 
-    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
+    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = $1::VARCHAR`, [periodo]);
     if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
       return res.status(403).json({ error: `El periodo ${periodo} no esta cerrado. Solo se pueden exportar consolidados de periodos cerrados.` });
     }
@@ -317,12 +314,9 @@ router.get('/consolidado-tecnico', async (req, res) => {
       JOIN pad.PAD p ON c.cod_pad = p.cod_pad
       JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
-      WHERE c.periodo_vigencia = @periodo AND p.cod_tipo_pad = @tipo
+      WHERE c.periodo_vigencia = $1::VARCHAR AND p.cod_tipo_pad = $2::VARCHAR
       ORDER BY c.cod_tip_mov, a.nombre, d.ap_paterno
-    `, [
-      { name: 'periodo', type: sql.VarChar(6), value: periodo },
-      { name: 'tipo', type: sql.VarChar(5), value: tipo },
-    ]);
+    `, [periodo, tipo]);
 
     // Active athletes (consolidado)
     const activosResult = await query(`
@@ -331,9 +325,9 @@ router.get('/consolidado-tecnico', async (req, res) => {
       FROM pad.PAD p
       JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
-      WHERE p.cod_estado_pad = 'ACT' AND p.cod_tipo_pad = @tipo
+      WHERE p.cod_estado_pad = 'ACT' AND p.cod_tipo_pad = $1::VARCHAR
       ORDER BY a.nombre, d.ap_paterno, d.ap_materno
-    `, [{ name: 'tipo', type: sql.VarChar(5), value: tipo }]);
+    `, [tipo]);
 
     const movRows = movResult.recordset;
     const activoRows = activosResult.recordset;
@@ -470,7 +464,7 @@ router.get('/consolidado-economico', async (req, res) => {
     if (vErr) return res.status(400).json({ error: vErr });
     const subtipoLabel = tipo === 'PAD1' ? 'I' : tipo === 'PAD2' ? 'II' : '(PNM)';
 
-    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
+    const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = $1::VARCHAR`, [periodo]);
     if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
       return res.status(403).json({ error: `El periodo ${periodo} no esta cerrado. Solo se pueden exportar consolidados de periodos cerrados.` });
     }
@@ -480,7 +474,7 @@ router.get('/consolidado-economico', async (req, res) => {
         d.num_documento,
         d.ap_paterno, d.ap_materno, d.nombres,
         d.num_cuenta, d.fecha_nac,
-        CASE WHEN DATEDIFF(YEAR, d.fecha_nac, GETDATE()) < 18 THEN 1 ELSE 0 END AS es_menor,
+        CASE WHEN EXTRACT(YEAR FROM AGE(now(), d.fecha_nac)) < 18 THEN 1 ELSE 0 END AS es_menor,
         p.cod_tipo_pad, p.cod_nivel,
         a.nombre AS asociacion,
         mr.monto_soles,
@@ -491,14 +485,11 @@ router.get('/consolidado-economico', async (req, res) => {
       JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
       LEFT JOIN pad.montos_referencia mr ON mr.cod_nivel = p.cod_nivel
-        AND @periodo BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
+        AND $1::VARCHAR BETWEEN mr.periodo_desde AND COALESCE(mr.periodo_hasta, '999999')
       LEFT JOIN pad.Apoderados ap ON d.cod_deportista = ap.cod_deportista
-      WHERE p.cod_estado_pad = 'ACT' AND p.cod_tipo_pad = @tipo
+      WHERE p.cod_estado_pad = 'ACT' AND p.cod_tipo_pad = $2::VARCHAR
       ORDER BY a.nombre, d.ap_paterno, d.ap_materno
-    `, [
-      { name: 'tipo', type: sql.VarChar(5), value: tipo },
-      { name: 'periodo', type: sql.VarChar(6), value: periodo }
-    ]);
+    `, [periodo, tipo]);
 
     const rows = result.recordset;
     const total = rows.reduce((s, r) => s + (parseFloat(r.monto_soles) || 0), 0);

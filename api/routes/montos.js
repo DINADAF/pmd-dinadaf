@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sql, query } = require('../db');
+const { query } = require('../db');
 const logger = require('../logger');
 
 // ── GET /api/montos/directivas ───────────────────────────────────────────────
@@ -15,30 +15,30 @@ router.get('/directivas', async (_req, res) => {
     const r = await query(`
       SELECT
         mr.normativa,
-        CASE WHEN mr.normativa = '${NORMATIVA_VIGENTE}' AND v.valor_uit IS NOT NULL
-             THEN CAST(LEFT(mr.periodo_desde, 4) AS SMALLINT)
+        CASE WHEN mr.normativa = $1::VARCHAR AND v.valor_uit IS NOT NULL
+             THEN CAST(substring(mr.periodo_desde, 1, 4) AS SMALLINT)
              ELSE NULL END                             AS anio,
-        CASE WHEN mr.normativa = '${NORMATIVA_VIGENTE}'
+        CASE WHEN mr.normativa = $1
              THEN v.valor_uit ELSE NULL END            AS valor_uit,
-        CASE WHEN mr.normativa = '${NORMATIVA_VIGENTE}'
+        CASE WHEN mr.normativa = $1
              THEN v.ref_ds    ELSE NULL END            AS ref_ds,
         MIN(mr.periodo_desde)                          AS periodo_ref,
-        MAX(ISNULL(mr.periodo_hasta, '999999'))         AS periodo_hasta
+        MAX(COALESCE(mr.periodo_hasta, '999999'))         AS periodo_hasta
       FROM pad.montos_referencia mr
       LEFT JOIN cat.valor_uit v
-        ON v.anio = CAST(LEFT(mr.periodo_desde, 4) AS SMALLINT)
+        ON v.anio = CAST(substring(mr.periodo_desde, 1, 4) AS SMALLINT)
       WHERE mr.normativa IS NOT NULL
       GROUP BY
         mr.normativa,
-        CASE WHEN mr.normativa = '${NORMATIVA_VIGENTE}' AND v.valor_uit IS NOT NULL
-             THEN CAST(LEFT(mr.periodo_desde, 4) AS SMALLINT)
+        CASE WHEN mr.normativa = $1 AND v.valor_uit IS NOT NULL
+             THEN CAST(substring(mr.periodo_desde, 1, 4) AS SMALLINT)
              ELSE NULL END,
-        CASE WHEN mr.normativa = '${NORMATIVA_VIGENTE}'
+        CASE WHEN mr.normativa = $1
              THEN v.valor_uit ELSE NULL END,
-        CASE WHEN mr.normativa = '${NORMATIVA_VIGENTE}'
+        CASE WHEN mr.normativa = $1
              THEN v.ref_ds    ELSE NULL END
       ORDER BY MIN(mr.periodo_desde)
-    `);
+    `, [NORMATIVA_VIGENTE]);
     res.json(r.recordset);
   } catch (err) {
     logger.error('montos', err);
@@ -128,16 +128,13 @@ router.get('/', async (req, res) => {
       FROM cat.Nivel n
       JOIN pad.montos_referencia mr
         ON  mr.cod_nivel     = n.cod_nivel
-        AND ISNULL(@periodo, FORMAT(GETDATE(), 'yyyyMM'))
-            BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
+        AND COALESCE($1::VARCHAR, TO_CHAR(now(), 'YYYYMM'))
+            BETWEEN mr.periodo_desde AND COALESCE(mr.periodo_hasta, '999999')
       LEFT JOIN cat.valor_uit v
-        ON  v.anio = CAST(LEFT(mr.periodo_desde, 4) AS SMALLINT)
-      WHERE (@tipo IS NULL OR n.cod_tipo_pad = @tipo)
+        ON  v.anio = CAST(substring(mr.periodo_desde, 1, 4) AS SMALLINT)
+      WHERE ($2::VARCHAR IS NULL OR n.cod_tipo_pad = $2)
       ORDER BY n.cod_tipo_pad, n.orden
-    `, [
-      { name: 'periodo', type: sql.VarChar(6), value: periodoRef },
-      { name: 'tipo',    type: sql.VarChar(5), value: tipoRef },
-    ]);
+    `, [periodoRef, tipoRef]);
 
     res.json(r.recordset);
   } catch (err) {
@@ -189,8 +186,8 @@ router.post('/generar', async (req, res) => {
 
     // Verificar que no existan montos para el primer mes (evitar duplicados)
     const check = await query(
-      `SELECT COUNT(*) AS cnt FROM pad.montos_referencia WHERE periodo_desde = @per`,
-      [{ name: 'per', type: sql.VarChar(6), value: meses[0] }]
+      `SELECT COUNT(*)::INTEGER AS cnt FROM pad.montos_referencia WHERE periodo_desde = $1::VARCHAR`,
+      [meses[0]]
     );
     if (check.recordset[0].cnt > 0) {
       return res.status(409).json({
@@ -212,32 +209,23 @@ router.post('/generar', async (req, res) => {
 
     // Registrar el valor UIT del año si no existe aún
     await query(
-      `IF NOT EXISTS (SELECT 1 FROM cat.valor_uit WHERE anio = @anio)
-         INSERT INTO cat.valor_uit (anio, valor_uit, ref_ds) VALUES (@anio, @uit, @ref_ds)`,
-      [
-        { name: 'anio',   type: sql.SmallInt,      value: anioNum },
-        { name: 'uit',    type: sql.Decimal(10, 2), value: uitNum  },
-        { name: 'ref_ds', type: sql.VarChar(60),    value: refDs   },
-      ]
+      `INSERT INTO cat.valor_uit (anio, valor_uit, ref_ds)
+       VALUES ($1::SMALLINT, $2::NUMERIC(10,2), $3::VARCHAR)
+       ON CONFLICT (anio) DO NOTHING`,
+      [anioNum, uitNum, refDs]
     );
 
     // Insertar montos parametrizados (uno por nivel×mes)
     const normativa = 'Dir. 003-2025-IPD/DINADAF';
     let insertados = 0;
-    for (const nivel of niveles.recordset) {
+    for (const nivel of niveles.rows) {
       const monto = Math.round(nivel.pct_uit * uitNum * 100) / 100;
       for (const mes of meses) {
         await query(
           `INSERT INTO pad.montos_referencia
              (cod_nivel, periodo_desde, periodo_hasta, divisa, monto_base, monto_soles, normativa)
-           VALUES (@cod_nivel, @per_desde, @per_hasta, 'S', @monto, @monto, @normativa)`,
-          [
-            { name: 'cod_nivel',  type: sql.VarChar(10),   value: nivel.cod_nivel },
-            { name: 'per_desde',  type: sql.VarChar(6),    value: mes },
-            { name: 'per_hasta',  type: sql.VarChar(6),    value: mes },
-            { name: 'monto',      type: sql.Decimal(10,2), value: monto },
-            { name: 'normativa',  type: sql.VarChar(60),   value: normativa },
-          ]
+           VALUES ($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, 'S', $4::NUMERIC(10,2), $5::NUMERIC(10,2), $6::VARCHAR)`,
+          [nivel.cod_nivel, mes, mes, monto, monto, normativa]
         );
         insertados++;
       }

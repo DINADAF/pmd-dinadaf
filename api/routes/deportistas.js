@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sql, query } = require('../db');
+const { query } = require('../db');
 const logger = require('../logger');
 const { parseIntParam } = require('../middleware/validate');
 
@@ -22,8 +22,8 @@ router.get('/buscar', async (req, res) => {
               d.cod_ubigeo, d.agrupacion
        FROM pad.Deportistas d
        LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
-       WHERE d.num_documento = @dni`,
-      [{ name: 'dni', type: sql.VarChar(12), value: dni }]
+       WHERE d.num_documento = $1::VARCHAR`,
+      [dni]
     );
     if (result.recordset.length === 0) {
       return res.json({ found: false });
@@ -40,10 +40,10 @@ router.get('/buscar', async (req, res) => {
        JOIN cat.Nivel n ON p.cod_nivel = n.cod_nivel
        LEFT JOIN pad.montos_referencia mr
            ON mr.cod_nivel = p.cod_nivel
-           AND FORMAT(GETDATE(), 'yyyyMM') BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
-       WHERE p.cod_deportista = @cod
+           AND TO_CHAR(now(), 'YYYYMM') BETWEEN mr.periodo_desde AND COALESCE(mr.periodo_hasta, '999999')
+       WHERE p.cod_deportista = $1::INTEGER
        ORDER BY p.cod_estado_pad, p.fecha_ingreso DESC`,
-      [{ name: 'cod', type: sql.Int, value: deportista.cod_deportista }]
+      [deportista.cod_deportista]
     );
 
     res.json({ found: true, deportista, pad_records: padResult.recordset });
@@ -80,25 +80,25 @@ router.post('/', async (req, res) => {
          (num_documento, tipo_documento, ap_paterno, ap_materno, nombres,
           sexo, fecha_nac, cod_asociacion, cod_ubigeo, num_cuenta,
           correo, telefono, agrupacion, activo, fecha_registro)
-       OUTPUT INSERTED.cod_deportista
        VALUES
-         (@num_documento, @tipo_documento, @ap_paterno, @ap_materno, @nombres,
-          @sexo, @fecha_nac, @cod_asociacion, @cod_ubigeo, @num_cuenta,
-          @correo, @telefono, @agrupacion, 0, GETDATE())`,
+         ($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR,
+          $6::CHAR(1), $7::DATE, $8::INTEGER, $9::CHAR(6), $10::VARCHAR,
+          $11::VARCHAR, $12::VARCHAR, $13::CHAR(1), 0, now())
+       RETURNING cod_deportista`,
       [
-        { name: 'num_documento', type: sql.VarChar(12), value: num_documento },
-        { name: 'tipo_documento', type: sql.VarChar(3), value: tipo_documento || 'DNI' },
-        { name: 'ap_paterno', type: sql.VarChar(50), value: ap_paterno },
-        { name: 'ap_materno', type: sql.VarChar(50), value: ap_materno || null },
-        { name: 'nombres', type: sql.VarChar(50), value: nombres },
-        { name: 'sexo', type: sql.Char(1), value: sexo },
-        { name: 'fecha_nac', type: sql.Date, value: fecha_nac },
-        { name: 'cod_asociacion', type: sql.Int, value: cod_asociacion },
-        { name: 'cod_ubigeo', type: sql.Char(6), value: cod_ubigeo || null },
-        { name: 'num_cuenta', type: sql.VarChar(20), value: num_cuenta || null },
-        { name: 'correo', type: sql.VarChar(80), value: correo || null },
-        { name: 'telefono', type: sql.VarChar(20), value: telefono || null },
-        { name: 'agrupacion', type: sql.Char(1), value: agrupacion || null },
+        num_documento,
+        tipo_documento || 'DNI',
+        ap_paterno,
+        ap_materno || null,
+        nombres,
+        sexo,
+        fecha_nac,
+        cod_asociacion,
+        cod_ubigeo || null,
+        num_cuenta || null,
+        correo || null,
+        telefono || null,
+        agrupacion || null,
       ]
     );
     res.json({ cod_deportista: result.recordset[0].cod_deportista });
@@ -123,11 +123,8 @@ router.patch('/:cod/cuenta', async (req, res) => {
 
   try {
     await query(
-      `UPDATE pad.Deportistas SET num_cuenta = @cuenta WHERE cod_deportista = @cod`,
-      [
-        { name: 'cuenta', type: sql.VarChar(20), value: tipo_giro === 'OPE' ? null : num_cuenta.trim() },
-        { name: 'cod', type: sql.Int, value: cod },
-      ]
+      `UPDATE pad.Deportistas SET num_cuenta = $1::VARCHAR WHERE cod_deportista = $2::INTEGER`,
+      [tipo_giro === 'OPE' ? null : num_cuenta.trim(), cod]
     );
     res.json({ ok: true });
   } catch (err) {
@@ -150,8 +147,8 @@ router.get('/:cod(\\d+)', async (req, res) => {
               a.nombre AS asociacion_nombre
        FROM pad.Deportistas d
        LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
-       WHERE d.cod_deportista = @cod`,
-      [{ name: 'cod', type: sql.Int, value: cod }]
+       WHERE d.cod_deportista = $1::INTEGER`,
+      [cod]
     );
     if (!result.recordset.length) return res.status(404).json({ error: 'No encontrado' });
     res.json(result.recordset[0]);
@@ -183,35 +180,35 @@ router.put('/:cod(\\d+)', async (req, res) => {
   try {
     await query(
       `UPDATE pad.Deportistas SET
-         num_documento  = @num_documento,
-         tipo_documento = @tipo_documento,
-         ap_paterno     = @ap_paterno,
-         ap_materno     = @ap_materno,
-         nombres        = @nombres,
-         sexo           = @sexo,
-         fecha_nac      = @fecha_nac,
-         cod_asociacion = @cod_asociacion,
-         cod_ubigeo     = @cod_ubigeo,
-         num_cuenta     = @num_cuenta,
-         correo         = @correo,
-         telefono       = @telefono,
-         agrupacion     = @agrupacion
-       WHERE cod_deportista = @cod`,
+         num_documento  = $1::VARCHAR,
+         tipo_documento = $2::VARCHAR,
+         ap_paterno     = $3::VARCHAR,
+         ap_materno     = $4::VARCHAR,
+         nombres        = $5::VARCHAR,
+         sexo           = $6::CHAR(1),
+         fecha_nac      = $7::DATE,
+         cod_asociacion = $8::INTEGER,
+         cod_ubigeo     = $9::CHAR(6),
+         num_cuenta     = $10::VARCHAR,
+         correo         = $11::VARCHAR,
+         telefono       = $12::VARCHAR,
+         agrupacion     = $13::CHAR(1)
+       WHERE cod_deportista = $14::INTEGER`,
       [
-        { name: 'num_documento',  type: sql.VarChar(12),  value: num_documento },
-        { name: 'tipo_documento', type: sql.VarChar(3),   value: tipo_documento || 'DNI' },
-        { name: 'ap_paterno',     type: sql.VarChar(50),  value: ap_paterno },
-        { name: 'ap_materno',     type: sql.VarChar(50),  value: ap_materno || null },
-        { name: 'nombres',        type: sql.VarChar(50),  value: nombres },
-        { name: 'sexo',           type: sql.Char(1),      value: sexo },
-        { name: 'fecha_nac',      type: sql.Date,         value: fecha_nac },
-        { name: 'cod_asociacion', type: sql.Int,          value: cod_asociacion },
-        { name: 'cod_ubigeo',     type: sql.Char(6),      value: cod_ubigeo || null },
-        { name: 'num_cuenta',     type: sql.VarChar(20),  value: num_cuenta || null },
-        { name: 'correo',         type: sql.VarChar(80),  value: correo || null },
-        { name: 'telefono',       type: sql.VarChar(20),  value: telefono || null },
-        { name: 'agrupacion',     type: sql.Char(1),      value: agrupacion || null },
-        { name: 'cod',            type: sql.Int,          value: cod },
+        num_documento,
+        tipo_documento || 'DNI',
+        ap_paterno,
+        ap_materno || null,
+        nombres,
+        sexo,
+        fecha_nac,
+        cod_asociacion,
+        cod_ubigeo || null,
+        num_cuenta || null,
+        correo || null,
+        telefono || null,
+        agrupacion || null,
+        cod,
       ]
     );
     res.json({ ok: true });
@@ -243,19 +240,19 @@ router.put('/organizaciones/:cod(\\d+)', async (req, res) => {
   try {
     await query(
       `UPDATE pad.Asociacion_Deportiva SET
-         nombre            = @nombre,
-         nombre_formal     = @nombre_formal,
-         tipo_organizacion = @tipo_organizacion,
-         disciplina        = @disciplina,
-         activo            = @activo
-       WHERE cod_asociacion = @cod`,
+         nombre            = $1::VARCHAR,
+         nombre_formal     = $2::VARCHAR,
+         tipo_organizacion = $3::VARCHAR,
+         disciplina        = $4::VARCHAR,
+         activo            = $5::BOOLEAN
+       WHERE cod_asociacion = $6::INTEGER`,
       [
-        { name: 'nombre',            type: sql.VarChar(80),  value: nombre },
-        { name: 'nombre_formal',     type: sql.VarChar(150), value: nombre_formal || null },
-        { name: 'tipo_organizacion', type: sql.VarChar(15),  value: tipo_organizacion },
-        { name: 'disciplina',        type: sql.VarChar(80),  value: disciplina || null },
-        { name: 'activo',            type: sql.Bit,          value: activo ? 1 : 0 },
-        { name: 'cod',               type: sql.Int,          value: parseInt(req.params.cod) },
+        nombre,
+        nombre_formal || null,
+        tipo_organizacion,
+        disciplina || null,
+        activo ? true : false,
+        parseInt(req.params.cod)
       ]
     );
     res.json({ ok: true });
@@ -271,7 +268,7 @@ router.get('/catalogos', async (_req, res) => {
     const [asociaciones, niveles, ubigeo_sample] = await Promise.all([
       query(`SELECT cod_asociacion, nombre FROM pad.Asociacion_Deportiva ORDER BY nombre`),
       query(`SELECT cod_nivel, nombre_nivel AS descripcion, cod_tipo_pad, activo FROM cat.Nivel WHERE activo = 1 ORDER BY cod_tipo_pad, cod_nivel`),
-      query(`SELECT TOP 0 cod_ubigeo FROM cat.ubigeo`), // just to confirm table exists
+      query(`SELECT cod_ubigeo FROM cat.ubigeo LIMIT 0`), // just to confirm table exists
     ]);
     res.json({
       asociaciones: asociaciones.recordset,
@@ -298,10 +295,11 @@ router.get('/pendientes-regularizacion', async (_req, res) => {
       FROM pad.Deportistas d
       JOIN pad.PAD p ON d.cod_deportista = p.cod_deportista AND p.cod_estado_pad = 'ACT'
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
-      CROSS APPLY (
-        SELECT TOP 1 * FROM pad.cambios_PAD cp
+      CROSS JOIN LATERAL (
+        SELECT * FROM pad.cambios_PAD cp
         WHERE cp.cod_pad = p.cod_pad
         ORDER BY cp.cod_cambio DESC
+        LIMIT 1
       ) c
       WHERE c.nro_informe IS NULL
          OR (c.detalle_evento IS NULL AND c.cod_resultado IS NULL)
@@ -336,11 +334,12 @@ router.post('/regularizar', async (req, res) => {
 
   if (!codCambioInt || !codDepInt) return res.status(400).json({ error: 'cod_cambio y cod_deportista requeridos y deben ser números válidos' });
 
-  const pool = await require('../db').getPool();
-  const transaction = new sql.Transaction(pool);
+  const { getPool } = require('../db');
+  const pool = await getPool();
+  const client = await pool.connect();
 
   try {
-    await transaction.begin();
+    await client.query('BEGIN');
 
     let resolved_cod_resultado = null;
     if (detalle_evento) {
@@ -349,87 +348,85 @@ router.post('/regularizar', async (req, res) => {
       // Mientras que detalle_evento en cambios_PAD es VarChar(2000)
       const nombreEventoTruncado = detalle_evento.substring(0, 200);
 
-      const evQuery = await new sql.Request(transaction)
-        .input('nombre_evento', sql.VarChar(200), nombreEventoTruncado)
-        .input('fecha_inicio', sql.Date, fecha_inicio_evento || null)
-        .input('fecha_fin', sql.Date, fecha_fin_evento || null)
-        .input('ciudad', sql.VarChar(80), lugar_evento || null)
-        .query(`INSERT INTO pad.Eventos_Resultado (nombre_evento, fecha_inicio, fecha_fin, ciudad)
-                OUTPUT INSERTED.cod_evento
-                VALUES (@nombre_evento, @fecha_inicio, @fecha_fin, @ciudad)`);
+      const evQuery = await client.query(
+        `INSERT INTO pad.Eventos_Resultado (nombre_evento, fecha_inicio, fecha_fin, ciudad)
+         VALUES ($1::VARCHAR, $2::DATE, $3::DATE, $4::VARCHAR)
+         RETURNING cod_evento`,
+        [nombreEventoTruncado, fecha_inicio_evento || null, fecha_fin_evento || null, lugar_evento || null]
+      );
 
-      const cod_evento_nuevo = evQuery.recordset[0].cod_evento;
+      const cod_evento_nuevo = evQuery.rows[0].cod_evento;
 
       // 2. Asociar Resultado
       const RESULTADOS_VALIDOS = ['ORO', 'PLATA', 'BRONCE', 'PARTICIPACION', 'OTRO'];
       const resultadoVal = resultado && RESULTADOS_VALIDOS.includes(resultado) ? resultado : 'PARTICIPACION';
-      const resQuery = await new sql.Request(transaction)
-        .input('cod_evento', sql.Int, cod_evento_nuevo)
-        .input('cod_deportista', sql.Int, codDepInt)
-        .input('modalidad', sql.VarChar(100), modalidad || null)
-        .input('categoria', sql.VarChar(50), categoria || null)
-        .input('resultado', sql.VarChar(30), resultadoVal)
-        .query(`INSERT INTO pad.resultados_deportista (cod_evento, cod_deportista, modalidad, categoria, resultado, fecha_vencimiento)
-                OUTPUT INSERTED.cod_resultado
-                VALUES (@cod_evento, @cod_deportista, @modalidad, @categoria, @resultado, EOMONTH((SELECT fecha_fin FROM pad.Eventos_Resultado WHERE cod_evento = @cod_evento), 11))`);
-      
-      resolved_cod_resultado = resQuery.recordset[0].cod_resultado;
+      const resQuery = await client.query(
+        `INSERT INTO pad.resultados_deportista (cod_evento, cod_deportista, modalidad, categoria, resultado, fecha_vencimiento)
+         VALUES ($1::INTEGER, $2::INTEGER, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, eomonth((SELECT fecha_fin FROM pad.Eventos_Resultado WHERE cod_evento = $1), 11))
+         RETURNING cod_resultado`,
+        [cod_evento_nuevo, codDepInt, modalidad || null, categoria || null, resultadoVal]
+      );
+
+      resolved_cod_resultado = resQuery.rows[0].cod_resultado;
     }
 
-    // 3. Update el record cambios_PAD — construir SET dinámicamente para evitar
-    //    pasar null a sql.Int cuando no hay evento (causa error en mssql)
-    const req3 = new sql.Request(transaction)
-      .input('cod_cambio', sql.Int, codCambioInt);
+    // 3. Update el record cambios_PAD — construir UPDATE dinámicamente
+    const updateClauses = [];
+    const updateParams = [];
+    let paramIdx = 1;
 
-    const setClauses = [];
     if (nro_informe !== null && nro_informe !== undefined && nro_informe !== '') {
-      req3.input('nro_informe', sql.VarChar(80), nro_informe);
-      setClauses.push('nro_informe = ISNULL(@nro_informe, nro_informe)');
+      updateClauses.push(`nro_informe = $${paramIdx}::VARCHAR`);
+      updateParams.push(nro_informe);
+      paramIdx++;
     }
     if (detalle_evento) {
-      req3.input('detalle_evento', sql.VarChar(2000), detalle_evento);
-      setClauses.push('detalle_evento = ISNULL(@detalle_evento, detalle_evento)');
+      updateClauses.push(`detalle_evento = $${paramIdx}::VARCHAR`);
+      updateParams.push(detalle_evento);
+      paramIdx++;
     }
     if (resolved_cod_resultado !== null) {
-      req3.input('cod_resultado', sql.Int, resolved_cod_resultado);
-      setClauses.push('cod_resultado = ISNULL(@cod_resultado, cod_resultado)');
+      updateClauses.push(`cod_resultado = $${paramIdx}::INTEGER`);
+      updateParams.push(resolved_cod_resultado);
+      paramIdx++;
     }
 
-    if (setClauses.length > 0) {
-      await req3.query(`UPDATE pad.cambios_PAD SET ${setClauses.join(', ')} WHERE cod_cambio = @cod_cambio`);
+    if (updateClauses.length > 0) {
+      updateParams.push(codCambioInt);
+      await client.query(`UPDATE pad.cambios_PAD SET ${updateClauses.join(', ')} WHERE cod_cambio = $${paramIdx}::INTEGER`, updateParams);
     }
 
     // 4. Actualizar num_cuenta si se proporcionó
     if (num_cuenta && num_cuenta.trim().length > 0 && num_cuenta.trim().length <= 20) {
-      await new sql.Request(transaction)
-        .input('cod_deportista', sql.Int, codDepInt)
-        .input('num_cuenta', sql.VarChar(20), num_cuenta.trim())
-        .query('UPDATE pad.Deportistas SET num_cuenta = @num_cuenta WHERE cod_deportista = @cod_deportista');
+      await client.query(
+        'UPDATE pad.Deportistas SET num_cuenta = $1::VARCHAR WHERE cod_deportista = $2::INTEGER',
+        [num_cuenta.trim(), codDepInt]
+      );
     }
 
     // 5. Update expedientes (Delete old, insert new)
     if (expedientes && expedientes.length > 0) {
-      await new sql.Request(transaction)
-        .input('cod_cambio', sql.Int, codCambioInt)
-        .query('DELETE FROM pad.expedientes_cambio WHERE cod_cambio = @cod_cambio');
+      await client.query('DELETE FROM pad.expedientes_cambio WHERE cod_cambio = $1::INTEGER', [codCambioInt]);
 
       for (const exp of expedientes) {
-        await new sql.Request(transaction)
-          .input('cod_cambio', sql.Int, codCambioInt)
-          .input('nro_expediente', sql.VarChar(50), exp.nro_expediente)
-          .input('tipo_documento', sql.VarChar(20), exp.tipo_documento || 'EXPEDIENTE')
-          .query(`INSERT INTO pad.expedientes_cambio (cod_cambio, nro_expediente, tipo_documento)
-                  VALUES (@cod_cambio, @nro_expediente, @tipo_documento)`);
+        await client.query(
+          `INSERT INTO pad.expedientes_cambio (cod_cambio, nro_expediente, tipo_documento)
+           VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR)`,
+          [codCambioInt, exp.nro_expediente, exp.tipo_documento || 'EXPEDIENTE']
+        );
       }
     }
 
-    await transaction.commit();
+    await client.query('COMMIT');
     res.json({ ok: true });
   } catch (err) {
-    await transaction.rollback().catch(() => {});
+    await client.query('ROLLBACK').catch(() => {});
+    client.release();
 
     logger.error('regularizar', err);
     res.status(500).json({ error: 'Error al regularizar registro' });
+  } finally {
+    if (client) client.release();
   }
 });
 
