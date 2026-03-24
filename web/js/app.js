@@ -31,7 +31,7 @@ const MSAL_CONFIG = {
   system: { loggerOptions: { logLevel: 3 } }
 };
 const DRIVE_ID = 'b!T9pa18s7Q0ucS14QcR9bATc7WiT-ztVPqEwNfjLw_AOIF3HTHWRESYYKCB6vvSsO';
-const GRAPH_SCOPES = ['https://graph.microsoft.com/Files.Read'];
+const GRAPH_SCOPES = ['https://graph.microsoft.com/Files.Read', 'https://graph.microsoft.com/Sites.Read.All'];
 let msalApp = null;
 if (!IS_LOCALHOST) {
   try { msalApp = new msal.PublicClientApplication(MSAL_CONFIG); } catch(e) { showLoadingMsg('Error MSAL: ' + e.message); console.error('MSAL init failed:', e); }
@@ -99,10 +99,15 @@ function showApp(account) {
 
 // ── API CHECK ──────────────────────────────────────────────
 async function checkApi() {
-  try {
-    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(2500) });
-    online = r.ok;
-  } catch { online = false; }
+  // Solo intentar la API local si estamos en el mismo origen (puerto 8080)
+  // Desde GitHub Pages no se usa la API local aunque sea alcanzable
+  if (!IS_LOCAL_API) { online = false; }
+  else {
+    try {
+      const r = await fetch(API + '/health', { signal: AbortSignal.timeout(2500) });
+      online = r.ok;
+    } catch { online = false; }
+  }
 
   // Sidebar indicator
   const dot = document.getElementById('api-dot');
