@@ -51,6 +51,7 @@ router.post('/', async (req, res) => {
     await transaction.begin();
 
     let cod_pad;
+    let nivel_al_retiro = null;
 
     if (tipo_movimiento === 'ING') {
       const r1 = await new sql.Request(transaction)
@@ -100,7 +101,7 @@ router.post('/', async (req, res) => {
       if (existing.recordset.length === 0)
         throw new Error('No se encontró registro PAD activo para retirar');
       cod_pad = existing.recordset[0].cod_pad;
-      cod_nivel = existing.recordset[0].cod_nivel; // nivel al momento del retiro
+      nivel_al_retiro = existing.recordset[0].cod_nivel; // nivel al momento del retiro
 
       await new sql.Request(transaction)
         .input('cod_pad', sql.Int, cod_pad)
@@ -162,7 +163,7 @@ router.post('/', async (req, res) => {
       .input('motivo', sql.VarChar(500), motivo || null)
       .input('detalle_evento', sql.VarChar(2000), detalle_evento || null)
       .input('nivel_anterior', sql.VarChar(10), tipo_movimiento === 'CAMBNIV' ? (cod_nivel_anterior || null)
-                                              : tipo_movimiento === 'RET'     ? (cod_nivel || null)
+                                              : tipo_movimiento === 'RET'     ? (nivel_al_retiro || null)
                                               : null)
       .input('nivel_nuevo',    sql.VarChar(10), tipo_movimiento === 'ING'     ? (cod_nivel || null)
                                               : tipo_movimiento === 'CAMBNIV' ? (cod_nivel || null)
