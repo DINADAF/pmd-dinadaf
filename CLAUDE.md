@@ -5,12 +5,15 @@
 **Plataforma PMD** is the data management platform for the Unidad Funcional de Gestión de Planificación y Metodología Deportiva (UF-PMD), under DINADAF at Peru's Instituto Peruano del Deporte (IPD). Its first module is the **PAD module**: a SQL Server database for the sports subsidy program (Programa de Apoyo al Deportista), replacing Excel-based management with a relational system under the DAMA-DMBOK framework. Additional modules for the UF-PMD area are planned.
 
 ## Stack
-- Database: SQL Server 2025 Express (instance: `localhost\SQLEXPRESS`)
-- Language: T-SQL exclusively
-- DB Name: `PAD_IPD`
-- IDE: SSMS 22 (primary), VS Code + MSSQL extension (secondary)
-- Collation: `Latin1_General_CI_AI` (accent-insensitive queries, accented data preserved)
+- Database: PostgreSQL 12+ (instance: `localhost:5432`)
+- Language: SQL (PostgreSQL dialect, previously T-SQL for SQL Server)
+- DB Name: `pad_ipd`
+- DB User: `pad_app` (non-superuser, least-privilege)
+- Node.js Driver: `pg` package (v8+)
+- IDE: pgAdmin 4 (primary), VS Code + PostgreSQL extension (secondary)
+- Collation: Default PostgreSQL collation with `unaccent` extension (accent-insensitive queries, accented data preserved)
 - Reference framework: DAMA-DMBOK 2nd Edition
+- **Migration Note:** Migrated from SQL Server 2025 Express (March 2026) to PostgreSQL for alignment with IPD IT infrastructure
 
 ## Database Architecture
 
@@ -198,10 +201,12 @@ SQL Server → API POST /exportar → OneDrive dinadaf@ipd.gob.pe /pad-data/
 - Sensitive data (DNI, bank accounts) excluded from all exports
 - Power BI configured with scheduled refresh from OneDrive source
 
-## Commands
-- Connect: `sqlcmd -S "localhost,1433" -U sa -P "<password>" -d PAD_IPD` (TCP; named pipe fails from bash)
-- Backup: via SSMS or `BACKUP DATABASE PAD_IPD TO DISK = '<path>'`
+## Commands (PostgreSQL)
+- Connect: `psql -h localhost -U pad_app -d pad_ipd` (will prompt for password)
+- Backup: `pg_dump -h localhost -U pad_app -d pad_ipd > backup.sql`
+- Restore: `psql -h localhost -U pad_app -d pad_ipd < backup.sql`
 - SQL files: `sql/` directory in project root
+- **Migration setup guide:** See `POSTGRESQL_SETUP.md` for complete PostgreSQL installation and migration steps
 
 ## Project Files
 - `sql/` — All SQL scripts (DDL, DML, ETL, queries)
@@ -317,8 +322,8 @@ SQL Server → API POST /exportar → OneDrive dinadaf@ipd.gob.pe /pad-data/
 - ⏳ Power BI Service: publish + public link + scheduled refresh (in progress — Claude Chat project)
 - ❌ Graph API browser access: IPD tenant blocks all external app consent (even Files.Read requires admin approval) — reason for pivot to Power BI
 
-### Pending
-- 🔴 SECURITY: Replace SQL Server `sa` user with dedicated least-privilege user
+### Pending (Post-Migration)
+- ⏸️ Data migration: Populate PostgreSQL with 2,011 athletes + 70,389 historical ejecución records from SQL Server backup
 - ⏸️ nivel_anterior/nivel_nuevo backfill: ING/RET records prior to Mar 2026 have NULL fields — need UPDATE from pad.PAD.cod_nivel
 - ⏸️ TABLA_MAESTRA_CAMBIOS_PAD.xlsx: awaiting historical data population for batch ETL
 - ⏸️ Azure AD app rename: "PAD IPD Dashboard" → "PMD DINADAF"

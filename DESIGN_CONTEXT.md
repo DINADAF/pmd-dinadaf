@@ -248,3 +248,147 @@ Switched because `loginPopup` causes the browser to show a "site wants to open a
 7. **Juntas Directivas module** — pad.Junta_Directiva + pad.Miembros_JD
 8. **Migration to Azure SQL** — when multi-user access needed
 9. **OCR/AI integration** — Claudia's idea; Ruben prefers manual entry. Future complement only.
+
+## Database Migration: SQL Server → PostgreSQL (March 2026)
+
+### Strategic Rationale
+
+**Decision:** Migrate PAD_IPD database from SQL Server 2025 Express to PostgreSQL 12+.
+
+**Why now?**
+1. **IT Department alignment:** IPD's IT infrastructure standardizes on PostgreSQL. Maintaining a bespoke SQL Server instance adds operational complexity for IT support.
+2. **Sustainability:** SQL Server Express has a 10GB limit. While current dataset (~150MB) is well below, future growth is uncertain. PostgreSQL scales without licensing constraints.
+3. **Portability:** PostgreSQL runs on Linux, Windows, and macOS with identical behavior. SQL Server requires Windows licensing. Enables future deployment to cloud (GCP, AWS) without migration friction.
+4. **Open-source stability:** Community-driven updates, better documentation, and no vendor lock-in.
+5. **Development convenience:** psql CLI is lighter than SQL Server tools; pgAdmin 4 is browser-based (no installation).
+
+### Migration Scope
+
+- **DDL conversion:** 16 tables, 8 views, 19 indexes, 11 CHECK constraints (sql/01_DDL_postgresql.sql)
+- **Driver change:** Node.js mssql → pg (api/db.js rewrite)
+- **Query conversions:** 51+ SQL queries across 5 route files (T-SQL → PostgreSQL dialect)
+- **Syntax translations:**
+  - `IDENTITY(1,1)` → `SERIAL` / `BIGSERIAL`
+  - `GETDATE()` → `now()` (runtime evaluation preserved)
+  - `DATEDIFF(unit, d1, d2)` → `EXTRACT(unit FROM d2 - d1)` or `EXTRACT(unit FROM AGE(d2, d1))`
+  - `FORMAT(date, 'yyyyMM')` → `TO_CHAR(date, 'YYYYMM')`
+  - `EOMONTH(date, months)` → custom PostgreSQL function `eomonth(date, months)`
+  - `ISNULL(a, b)` → `COALESCE(a, b)`
+  - `LEFT(str, n)` → `substring(str, 1, n)`
+  - String concat `+` → `||`
+  - `LIKE '[0-9]'` regex → `~ '^[0-9]$'` (regex syntax)
+  - `OUTPUT INSERTED.*` (T-SQL) → `RETURNING *` (PostgreSQL)
+  - `MERGE...WHEN MATCHED/NOT MATCHED` → `INSERT...ON CONFLICT...DO UPDATE`
+  - Parameter binding `@param` (named) → `$1, $2` (positional)
+
+### Extensibility & Helpers
+
+**PostgreSQL extensions:**
+- `unaccent` — for accent-insensitive searches (matches Latin1_General_CI_AI collation behavior)
+
+**Helper functions created:**
+- `eomonth(date, months)` — calculates end-of-month date (replacement for SQL Server EOMONTH function)
+
+**Backward compatibility wrapper (api/db.js):**
+- Node.js pg driver results wrapped to return `{ recordset: rows, rowsAffected: [rowCount] }`
+- Eliminates need to refactor all route code; existing code continues working
+
+### Security Model
+
+**Old (SQL Server):**
+- Single superuser `sa` login with shared password
+
+**New (PostgreSQL):**
+- Dedicated non-superuser role `pad_app`
+- Role created with `LOGIN` and minimal privileges
+- Used exclusively by Node.js API
+- All credentials in `.env` (gitignored)
+
+### Data Migration Strategy
+
+- **Phase 1:** Create PostgreSQL schema (DDL scripts)
+- **Phase 2:** Populate catalog tables (cat.*) — small, static
+- **Phase 3:** Migrate operational data (pad.*) — 2,011 athletes, 70,389 historical records
+  - Option: Python ETL script (sql/migracion_etl_postgresql.py) reading from SQL Server
+  - Option: CSV export + COPY import
+  - Validation: FK integrity checks, row count matching
+- **Phase 4:** Verify gold views execute correctly
+- **Phase 5:** API integration testing (health check, main workflows)
+
+### Testing & Rollback Plan
+
+**Pre-migration validation:**
+1. DDL creates all 16 tables + 8 views + 19 indexes
+2. Catalog data loads correctly (cat.* tables)
+3. API health check: `GET /health` returns 200 OK
+4. Core workflows: ING/CAMBNIV/RET movements insert successfully
+5. Reports generate without error: PDF/Excel exports
+
+**Rollback strategy:**
+- SQL Server backup retained until 100% confirmation of PostgreSQL stability
+- If critical issue found post-migration, restore from SQL Server backup
+- Parallel run (both databases) for 1 week during transition period
+
+### Responsive Design Enhancement (Concurrent, Phase 4)
+
+While migrating the database, simultaneously implemented responsive CSS + JavaScript for mobile/tablet support:
+
+**Desktop (1200px+):** Original design unchanged
+- Sidebar: 240px fixed left
+- Main content: 4-column grids (stats), 3-column module selector
+- Padding: 32px
+
+**Tablet (768px-1199px):** Optimized for 10-inch tablets
+- Sidebar: reduced to 220px
+- Main content: 2-column grids
+- Padding: 24px
+- Buttons: 44px min-height (touch target)
+
+**Mobile (320px-767px):** Drawer-based sidebar, stacked content
+- Sidebar: hidden by default, opens as fixed drawer on hamburger click
+- Main content: 1-column grids, single-cell tables with data attributes
+- Padding: 16px
+- Charts: height 200px (vs. 320px on desktop)
+- Buttons: 44px touch targets, full-width on mobile
+
+**JavaScript enhancements:**
+- Media query listener for sidebar auto-close on desktop, drawer mode on mobile
+- Hamburger button appears only on mobile viewports
+- Sidebar closes on nav item click or ESC key
+
+### Files Modified/Created
+
+| File | Change | Type |
+|------|--------|------|
+| `sql/01_DDL_postgresql.sql` | Full DDL conversion | Create |
+| `sql/19_indexes_constraints_postgresql.sql` | Index/constraint migration | Create |
+| `sql/22_valor_uit_postgresql.sql` | UIT catalog (unchanged, just PostgreSQL syntax) | Create |
+| `api/db.js` | mssql → pg driver; Pool + compatibility wrapper | Rewrite |
+| `api/.env` | DB_SERVER → DB_HOST, DB_PORT 1433 → 5432 | Modify |
+| `api/routes/*.js` | 51+ queries converted to PostgreSQL syntax | Modify |
+| `web/css/style.css` | Responsive media queries for tablet + mobile | Modify |
+| `web/js/app.js` | Mobile sidebar toggle + media query listener | Modify |
+| `CLAUDE.md` | Stack section: SQL Server → PostgreSQL | Modify |
+| `POSTGRESQL_SETUP.md` | New setup guide: installation, config, operations | Create |
+
+### Performance Considerations
+
+- PostgreSQL uses simpler query planning for this scale (16 tables, <300k rows total)
+- Indexes on FK columns maintained (19 total, unchanged count)
+- No need for query hints or WITH hints; PostgreSQL optimizer usually chooses well
+- Monitoring: slow query logs enabled via `log_min_duration_statement = 1000` (log queries >1s)
+
+### Post-Migration Support
+
+Refer to **POSTGRESQL_SETUP.md** for:
+- Installation and role creation
+- DDL script execution
+- Data migration procedures
+- PostgreSQL operations (backup, restore, connections)
+- Troubleshooting common issues
+
+**Contact:** If issues arise, check PostgreSQL logs:
+```bash
+tail -f /var/log/postgresql/postgresql.log  # Linux
+SELECT * FROM pg_log_messages;              # Windows (if enabled)
+```

@@ -1791,6 +1791,90 @@ async function guardarRegularizacion() {
   }
 }
 
+// ── MOBILE SIDEBAR ─────────────────────────────────────────
+function initMobileSidebar() {
+  const mediaQuery = window.matchMedia('(max-width: 767px)');
+  const sidebar = document.getElementById('sidebar');
+  const main = document.querySelector('.main');
+  const body = document.body;
+
+  function closeSidebar() {
+    if (sidebar) sidebar.classList.remove('mobile-open');
+  }
+
+  function toggleSidebar() {
+    if (sidebar) sidebar.classList.toggle('mobile-open');
+  }
+
+  // Crear botón hamburguesa si no existe
+  const topbar = document.querySelector('.topbar');
+  if (topbar && mediaQuery.matches) {
+    let hamburger = document.getElementById('btn-hamburger');
+    if (!hamburger) {
+      hamburger = document.createElement('button');
+      hamburger.id = 'btn-hamburger';
+      hamburger.className = 'btn-hamburger';
+      hamburger.innerHTML = '☰';
+      hamburger.style.cssText = `
+        display: none;
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--text);
+        padding: 8px 12px;
+        border-radius: var(--radius);
+        transition: var(--transition);
+      `;
+      hamburger.addEventListener('click', toggleSidebar);
+      topbar.insertBefore(hamburger, topbar.firstChild);
+    }
+  }
+
+  // Listener para cambios en el tamaño de pantalla
+  function handleMediaChange(e) {
+    if (e.matches) {
+      // Mobile: mostrar hamburguesa
+      const hamburger = document.getElementById('btn-hamburger');
+      if (hamburger) hamburger.style.display = 'block';
+    } else {
+      // Desktop: ocultar hamburguesa y asegurar sidebar visible
+      const hamburger = document.getElementById('btn-hamburger');
+      if (hamburger) hamburger.style.display = 'none';
+      closeSidebar();
+    }
+  }
+
+  mediaQuery.addEventListener('change', handleMediaChange);
+
+  // Cerrar sidebar al hacer click en un nav item
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', closeSidebar);
+  });
+
+  // Cerrar sidebar al hacer click en overlay (si se añade)
+  if (main) {
+    main.addEventListener('click', (e) => {
+      if (mediaQuery.matches && sidebar?.classList.contains('mobile-open')) {
+        closeSidebar();
+      }
+    });
+  }
+
+  // Cerrar sidebar con ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar?.classList.contains('mobile-open')) {
+      closeSidebar();
+    }
+  });
+
+  // Establecer estado inicial
+  if (mediaQuery.matches) {
+    const hamburger = document.getElementById('btn-hamburger');
+    if (hamburger) hamburger.style.display = 'block';
+  }
+}
 
 // ── INIT ──────────────────────────────────────────────────
 (async () => {
@@ -1823,6 +1907,7 @@ async function guardarRegularizacion() {
   showApp(account);
   await checkApi();
   await loadCats();
+  initMobileSidebar();
   setInterval(checkApi, 30000);
 
   // Si es la API local, entrar directo a Gestión PAD sin pasar por el home screen
