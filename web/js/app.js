@@ -32,7 +32,7 @@ const MSAL_CONFIG = {
 };
 const DRIVE_ID = 'b!T9pa18s7Q0ucS14QcR9bATc7WiT-ztVPqEwNfjLw_AOIF3HTHWRESYYKCB6vvSsO';
 const GRAPH_SCOPES = ['https://graph.microsoft.com/Files.Read'];
-const SHARE_ID = 'u!aHR0cHM6Ly9pcGRwZXJ1LW15LnNoYXJlcG9pbnQuY29tLzpmOi9nL3BlcnNvbmFsL2RpbmFkYWZfaXBkX2dvYl9wZS9JZ0FKeWFoNUd5NmNTNUhnZUMxQWNDelZBZW9QUXlCMXNpNXF4endaTlRHeUZqTT9lPUV5bFRYZw';
+const SHARE_ID = 'u!aHR0cHM6Ly9pcGRwZXJ1LW15LnNoYXJlcG9pbnQuY29tLzpmOi9nL3BlcnNvbmFsL2RpbmFkYWZfaXBkX2dvYl9wZS9JZ0FKeWFoNUd5NmNTNUhnZUMxQWNDelZBVXkxaG5oMU1aa3hiR3JkZHY4dzFIaz9lPUN6S2JRcw';
 let msalApp = null;
 if (!IS_LOCALHOST) {
   try { msalApp = new msal.PublicClientApplication(MSAL_CONFIG); } catch(e) { showLoadingMsg('Error MSAL: ' + e.message); console.error('MSAL init failed:', e); }
@@ -49,11 +49,9 @@ async function getMsalToken() {
 }
 
 async function oneDriveJson(filename) {
-  const token = await getMsalToken();
-  if (!token) return null;
   try {
     const url = `https://graph.microsoft.com/v1.0/shares/${SHARE_ID}/root:/${filename}:/content`;
-    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await fetch(url);
     return r.ok ? r.json() : null;
   } catch { return null; }
 }
