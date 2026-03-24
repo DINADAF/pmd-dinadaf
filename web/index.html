@@ -191,8 +191,19 @@
         </div>
         <div class="card" style="padding:24px;margin-bottom:0">
           <h3 style="font-size:14px;color:var(--text2);margin-bottom:20px;text-transform:uppercase;font-weight:700">Demografía por Beneficio y Sexo</h3>
-          <div style="position:relative; height:320px; width:100%">
-            <canvas id="chart-demo"></canvas>
+          <div style="display:flex; gap:16px; height:170px; width:100%; overflow:hidden">
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; align-items:center">
+              <span style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">PAD I</span>
+              <div style="position:relative;flex:1;width:100%;min-width:0;overflow:hidden"><canvas id="chart-demo-pad1"></canvas></div>
+            </div>
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; align-items:center">
+              <span style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">PAD II</span>
+              <div style="position:relative;flex:1;width:100%;min-width:0;overflow:hidden"><canvas id="chart-demo-pad2"></canvas></div>
+            </div>
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; align-items:center">
+              <span style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">PNM</span>
+              <div style="position:relative;flex:1;width:100%;min-width:0;overflow:hidden"><canvas id="chart-demo-pnm"></canvas></div>
+            </div>
           </div>
         </div>
       </div>
@@ -209,6 +220,7 @@
     <div class="page" id="page-deportistas">
       <div class="search-bar">
         <input class="search-input" id="q-dep" placeholder="Buscar por nombre, DNI o federacion..." oninput="filterDep()">
+        <button class="btn" onclick="openPendientes()" style="background:var(--amber);color:#fff;border:none;margin-right:8px;font-weight:600">&#9888; Pendientes (Evento/Expediente)</button>
         <button class="btn btn-secondary" id="btn-nuevo-dep" onclick="openModal('modal-deportista')" style="display:none">+ Nuevo deportista</button>
       </div>
       <div class="filter-pills" id="pills-dep">
@@ -270,10 +282,9 @@
               <th class="sortable" onclick="sortDetalle('nivel_nuevo')">Nivel nuevo</th>
               <th class="sortable" onclick="sortDetalle('nro_informe')">Nro. Informe</th>
               <th>Expedientes</th>
-              <th class="sortable" onclick="sortDetalle('motivo')">Motivo</th>
               <th></th>
             </tr></thead>
-            <tbody id="t-detalle-cambios"><tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr></tbody>
+            <tbody id="t-detalle-cambios"><tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -334,7 +345,7 @@
           <option value="PAD1">PAD I</option><option value="PAD2">PAD II</option><option value="PNM">PNM</option>
         </select>
         <input type="month" id="inp-periodo-giro" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
-        <button class="btn btn-secondary" onclick="previewGiro()">&#128065; Ver preview</button>
+        <button class="btn btn-secondary" onclick="previewGiro()">&#128065; Visualizar</button>
         <button class="btn btn-primary" onclick="descargarGiro()">&#8595; Descargar Excel GIRO</button>
       </div>
       <div id="giro-preview-wrap" style="display:none">
@@ -368,13 +379,89 @@
 
     <!-- MONTOS -->
     <div class="page" id="page-montos">
-      <div class="alert alert-info" style="max-width:700px">&#9432; Montos de referencia por nivel y periodo. Los periodos anteriores estan bloqueados para evitar edicion accidental. Solo el periodo vigente es editable.</div>
-      <div class="card" style="max-width:700px">
-        <div class="card-header"><h3>Montos de referencia</h3><span style="font-size:12px;color:var(--text3)">2,172 registros cargados (2013-2026)</span></div>
-        <div style="padding:40px 20px;text-align:center;color:var(--text3)">
-          <div style="font-size:32px;opacity:0.3;margin-bottom:12px">&#164;</div>
-          <p style="font-size:13px;margin-bottom:4px">Modulo de edicion de montos en desarrollo</p>
-          <p style="font-size:11px">Actualmente los montos se administran directamente en la base de datos</p>
+      <div class="alert alert-info">&#9432; Los montos de periodos anteriores a mayo 2025 son de solo lectura. Para generar montos de un nuevo año ingresa el valor UIT aprobado por el MEF.</div>
+
+      <!-- Barra de controles -->
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <select id="sel-directiva-montos" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);min-width:300px">
+          <option value="">Cargando directivas...</option>
+        </select>
+        <select id="sel-tipo-montos" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface)">
+          <option value="">Todos los tipos</option>
+          <option value="PAD1">PAD I</option>
+          <option value="PAD2">PAD II</option>
+          <option value="PNM">PNM</option>
+        </select>
+        <button class="btn btn-secondary" onclick="loadMontos()">&#128269; Consultar</button>
+        <button class="btn btn-primary" onclick="abrirModalGenerarMontos()">&#43; Nuevo año</button>
+      </div>
+
+      <!-- Info UIT del periodo consultado -->
+      <div id="montos-uit-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;font-size:13px;display:flex;gap:24px;flex-wrap:wrap">
+        <span>Periodo: <strong id="montos-lbl-periodo">—</strong></span>
+        <span>UIT vigente: <strong id="montos-lbl-uit">—</strong></span>
+        <span id="montos-lbl-ds" style="color:var(--text3)"></span>
+        <span id="montos-lbl-bloqueo" style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px"></span>
+      </div>
+
+      <!-- Tabla de montos -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Montos por nivel</h3>
+          <span id="montos-count" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Tipo PAD</th>
+            <th>Nivel</th>
+            <th style="text-align:right">Monto mensual (S/)</th>
+            <th>Normativa</th>
+          </tr></thead>
+          <tbody id="t-montos"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Selecciona un periodo y haz clic en Consultar</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODAL GENERAR MONTOS NUEVO AÑO -->
+    <div class="modal-overlay" id="modal-generar-montos" style="display:none">
+      <div class="modal" style="max-width:620px">
+        <div class="modal-header">
+          <div>
+            <h2>Generar montos para nuevo año</h2>
+            <p style="font-size:12px;color:var(--text2);margin-top:2px">Calcula los montos mensuales de los 14 niveles activos usando el valor UIT del año indicado</p>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-generar-montos')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div class="field-group">
+              <label class="field-label">Año <span style="color:var(--accent)">*</span></label>
+              <input type="number" id="inp-generar-anio" min="2025" max="2099" step="1" placeholder="2027" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);width:100%;box-sizing:border-box">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Valor UIT (S/) <span style="color:var(--accent)">*</span></label>
+              <input type="number" id="inp-generar-uit" min="1000" max="99999" step="0.01" placeholder="5700.00" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);width:100%;box-sizing:border-box">
+            </div>
+            <div class="field-group" style="grid-column:1/-1">
+              <label class="field-label">Decreto Supremo de referencia (opcional)</label>
+              <input type="text" id="inp-generar-ds" maxlength="60" placeholder="Ej. DS 010-2026-EF" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);width:100%;box-sizing:border-box">
+            </div>
+          </div>
+          <button class="btn btn-secondary" onclick="calcPrevMontos()" style="margin-bottom:16px">&#9654; Previsualizar montos</button>
+
+          <!-- Tabla de preview -->
+          <div id="montos-preview-wrap" style="display:none">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Montos calculados (previsualización)</div>
+            <table style="font-size:12px">
+              <thead><tr><th>Nivel</th><th>Tipo PAD</th><th style="text-align:right">% UIT</th><th style="text-align:right">Monto mensual (S/)</th></tr></thead>
+              <tbody id="t-montos-preview"></tbody>
+            </table>
+            <div id="montos-preview-total" style="text-align:right;font-size:12px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeModal('modal-generar-montos')">Cancelar</button>
+          <button class="btn btn-primary" id="btn-confirmar-generar" onclick="confirmarGenerarMontos()" disabled>Generar montos</button>
         </div>
       </div>
     </div>
@@ -524,6 +611,158 @@
       </div>
     </div>
 
+    <!-- MODAL EDITAR CAMBIO PAD -->
+    <div class="modal-overlay" id="modal-edit-cambio" style="display:none">
+      <div class="modal" style="max-width:520px">
+        <div class="modal-header">
+          <div>
+            <h2>Editar cambio PAD</h2>
+            <p id="modal-edit-cambio-sub" style="font-size:12px;color:var(--text2);margin-top:2px"></p>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-edit-cambio')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="ec-cod">
+          <div class="edit-grid">
+            <div class="form-group">
+              <label>Tipo de movimiento</label>
+              <select id="ec-tipo-mov" onchange="toggleNivelesCambio()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+                <option value="ING">Ingreso</option>
+                <option value="CAMBNIV">Cambio de nivel</option>
+                <option value="RET">Retiro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nro. Informe</label>
+              <input id="ec-nro-informe" type="text" placeholder="000000-2026-PMP" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:'JetBrains Mono',monospace;font-size:13px">
+            </div>
+            <div class="form-group" id="ec-grupo-nivel-ant" style="display:none">
+              <label>Nivel anterior</label>
+              <input id="ec-nivel-anterior" type="text" placeholder="ej. III" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group" id="ec-grupo-nivel-nuevo" style="display:none">
+              <label>Nivel nuevo</label>
+              <input id="ec-nivel-nuevo" type="text" placeholder="ej. IV" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+            <div class="form-group full">
+              <label>Motivo</label>
+              <input id="ec-motivo" type="text" placeholder="Descripción del motivo" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeModal('modal-edit-cambio')">Cancelar</button>
+          <button class="btn btn-primary" id="btn-save-cambio" onclick="saveEditCambio()">&#10003; Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL LISTA PENDIENTES REGULARIZACION -->
+    <div class="modal-overlay" id="modal-pendientes" style="display:none;z-index:300">
+      <div class="modal" style="max-width:960px">
+        <div class="modal-header">
+          <div>
+            <h2>Deportistas Pendientes de Regularizar (Fase 5)</h2>
+            <p style="font-size:12px;color:var(--text2);margin-top:2px">Deportistas activos cuyo ultimo cambio omite Informe, Evento Deportivo o Expediente.</p>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-pendientes')">&#10005;</button>
+        </div>
+        <div class="modal-body" style="padding:0">
+          <table style="border-radius:0">
+            <thead>
+              <tr><th>DNI</th><th>Deportista</th><th>Prog. / Niv.</th><th>Falta</th><th>Accion</th></tr>
+            </thead>
+            <tbody id="t-pendientes">
+              <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL FORMULARIO REGULARIZACION -->
+    <div class="modal-overlay" id="modal-form-reg" style="display:none;z-index:400">
+      <div class="modal" style="max-width:800px">
+        <div class="modal-header">
+          <div>
+            <h2 id="reg-titulo">Regularizar Datos</h2>
+            <p id="reg-subtitulo" style="font-size:12px;color:var(--text2);margin-top:2px"></p>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-form-reg')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="reg-cod-cambio">
+          <input type="hidden" id="reg-cod-deportista">
+          <div id="alert-reg" style="margin-bottom:16px"></div>
+          
+          <div class="edit-grid" style="grid-template-columns:1fr 1fr;gap:20px">
+            <!-- Columna Izquierda: Informe y Expedientes -->
+            <div>
+              <h3 style="font-size:13px;color:var(--text);margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px">Documentos</h3>
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Nro. Informe <span style="color:var(--danger)">*</span></label>
+                <input id="reg-informe" type="text" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Nro. Cuenta</label>
+                <input id="reg-num-cuenta" type="text" maxlength="20" placeholder="Banco de la Nación" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                <span id="reg-cuenta-hint" class="form-hint"></span>
+              </div>
+              <div class="form-group">
+                <label>Expedientes <span style="color:var(--danger)">*</span></label>
+                <div id="reg-exp-container" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="agregarExpReg()">+ Agregar</button>
+              </div>
+            </div>
+
+            <!-- Columna Derecha: Evento Deportivo -->
+            <div>
+              <h3 style="font-size:13px;color:var(--text);margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px">Evento Deportivo Resultante</h3>
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Nombre del Evento <span style="color:var(--danger)">*</span></label>
+                <input id="reg-ev-nombre" type="text" placeholder="Según denominación Directiva 003-2025, Anexo 06" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <div class="form-group">
+                  <label>Fecha inicio</label>
+                  <input type="date" id="reg-ev-ini" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                </div>
+                <div class="form-group">
+                  <label>Fecha fin</label>
+                  <input type="date" id="reg-ev-fin" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <div class="form-group">
+                  <label>Modalidad</label>
+                  <input id="reg-ev-mod" type="text" placeholder="Ej: Espada individual" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                </div>
+                <div class="form-group">
+                  <label>Categoría</label>
+                  <input id="reg-ev-cat" type="text" placeholder="Ej: Femenino Senior" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:12px">
+                <label>Resultado <span style="color:var(--danger)">*</span></label>
+                <select id="reg-ev-res" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:100%">
+                  <option value="">Seleccione...</option>
+                  <option value="ORO">Medalla de Oro (1er lugar)</option>
+                  <option value="PLATA">Medalla de Plata (2do lugar)</option>
+                  <option value="BRONCE">Medalla de Bronce (3er lugar)</option>
+                  <option value="PARTICIPACION">Participación / Clasificación</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeModal('modal-form-reg')">Cancelar</button>
+          <button class="btn btn-primary" id="btn-save-reg" onclick="guardarRegularizacion()">&#10003; Guardar Datos</button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL CONFIRMACION (doble confirmacion) -->
     <div class="modal-overlay" id="modal-confirm" style="display:none">
       <div class="confirm-box">
@@ -634,9 +873,15 @@
               <option value="OTRO">Otro</option>
             </select>
           </div>
-          <div class="form-group" style="margin-bottom:12px">
-            <label>Modalidad / Categoria</label>
-            <input id="inp-ev-modalidad" placeholder="Ej: Espada individual femenina">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div class="form-group">
+              <label>Modalidad</label>
+              <input id="inp-ev-modalidad" placeholder="Ej: Espada individual">
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <input id="inp-ev-cat" placeholder="Ej: Femenino Senior">
+            </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
             <div class="form-group">
@@ -648,7 +893,7 @@
               <input type="date" id="inp-ev-fin" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:100%">
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom:12px">
             <label>Lugar</label>
             <input id="inp-ev-lugar" placeholder="Ciudad, Pais">
           </div>

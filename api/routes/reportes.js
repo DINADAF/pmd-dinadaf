@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../db');
+const { query, sql } = require('../db');
 const { uploadJSON } = require('../sharepoint');
 const logger = require('../logger');
 
@@ -88,7 +88,10 @@ router.get('/dashboard', async (_req, res) => {
 });
 
 // Active athletes list
-router.get('/activos', async (_req, res) => {
+router.get('/activos', async (req, res) => {
+  const { tipo, periodo } = req.query;
+  const periodoRef = (periodo && /^\d{6}$/.test(periodo)) ? periodo : null;
+  const tipoRef    = (tipo && ['PAD1','PAD2','PNM'].includes(tipo)) ? tipo : null;
   try {
     const result = await query(`
       SELECT
@@ -97,6 +100,7 @@ router.get('/activos', async (_req, res) => {
         p.es_permanente, p.fecha_ingreso,
         n.nombre_nivel AS nivel_desc,
         a.nombre AS asociacion,
+        d.num_cuenta,
         mr.monto_soles,
         CASE WHEN d.num_cuenta IS NULL THEN 'OPE' ELSE 'CUENTA' END AS tipo_giro
       FROM pad.PAD p
@@ -105,10 +109,15 @@ router.get('/activos', async (_req, res) => {
       LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
       LEFT JOIN pad.montos_referencia mr
         ON mr.cod_nivel = p.cod_nivel
-        AND FORMAT(GETDATE(), 'yyyyMM') BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
+        AND ISNULL(@periodo, FORMAT(GETDATE(), 'yyyyMM'))
+            BETWEEN mr.periodo_desde AND ISNULL(mr.periodo_hasta, '999999')
       WHERE p.cod_estado_pad = 'ACT'
+        AND (@tipo IS NULL OR p.cod_tipo_pad = @tipo)
       ORDER BY p.cod_tipo_pad, p.cod_nivel, d.ap_paterno, d.ap_materno
-    `);
+    `, [
+      { name: 'periodo', type: sql.VarChar(6), value: periodoRef },
+      { name: 'tipo',    type: sql.VarChar(5), value: tipoRef },
+    ]);
     res.json(result.recordset);
   } catch (err) {
     logger.error('reportes', err);

@@ -10,7 +10,17 @@
 ```
 PAD_IPD/
 ├── CLAUDE.md              # Claude Code context file
+├── DESIGN_CONTEXT.md      # Architecture and Decision Log
 ├── README.md              # This file
+├── api/                   # NodeJS Express Backend
+│   ├── routes/            # API Endpoints
+│   ├── server.js          # Main entrypoint
+│   └── .env               # Secrets and Configuration
+├── web/                   # Frontend Web Portal
+│   ├── css/               # Separated styling (style.css)
+│   ├── js/                # Logic separated (app.js)
+│   └── index.html         # Pure structural DOM
+├── portfolio/             # Purely offline Mockup version for demonstrations
 ├── sql/
 │   ├── 01_DDL_estructura.sql          # Complete DB structure (tables + views)
 │   ├── 02_DML_catalogos.sql           # Catalog data inserts

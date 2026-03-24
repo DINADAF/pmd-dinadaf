@@ -206,10 +206,12 @@ router.get('/consolidado-tecnico', async (req, res) => {
   try {
     const tipo    = req.query.tipo    || 'PAD1';
     const periodo = req.query.periodo || currentPeriodo();
+    const vErr = validarParamsReporte(tipo, periodo);
+    if (vErr) return res.status(400).json({ error: vErr });
 
     const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
     if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
-      return res.status(403).send(`<h1>Acceso Denegado</h1><p>El periodo ${periodo} no esta cerrado. Solo se pueden emitir consolidados de periodos cerrados.</p>`);
+      return res.status(403).json({ error: `El periodo ${periodo} no esta cerrado. Solo se pueden emitir consolidados de periodos cerrados.` });
     }
 
     const movResult = await query(`
@@ -371,10 +373,12 @@ router.get('/consolidado-economico', async (req, res) => {
   try {
     const tipo    = req.query.tipo    || 'PAD1';
     const periodo = req.query.periodo || currentPeriodo();
+    const vErr = validarParamsReporte(tipo, periodo);
+    if (vErr) return res.status(400).json({ error: vErr });
 
     const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
     if (!pCheck.recordset.length || !pCheck.recordset[0].cerrado) {
-      return res.status(403).send(`<h1>Acceso Denegado</h1><p>El periodo ${periodo} no esta cerrado. Solo se pueden emitir consolidados de periodos cerrados.</p>`);
+      return res.status(403).json({ error: `El periodo ${periodo} no esta cerrado. Solo se pueden emitir consolidados de periodos cerrados.` });
     }
 
     const result = await query(`

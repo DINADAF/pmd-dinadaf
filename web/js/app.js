@@ -70,15 +70,13 @@ function updateAuthUI() {
 async function msalSignIn() {
   if (!msalApp) return;
   const btn = document.getElementById('btn-signin');
-  const orig = btn?.textContent;
-  if (btn) btn.textContent = 'Iniciando...';
+  if (btn) btn.textContent = 'Redirigiendo...';
   try {
-    const result = await msalApp.loginPopup({ scopes: GRAPH_SCOPES });
-    showApp(result.account);
-    updateAuthUI();
+    await msalApp.loginRedirect({ scopes: GRAPH_SCOPES });
+    // La página se redirige a Microsoft — el retorno lo maneja handleRedirectPromise() en INIT
   } catch(e) {
-    if (e.errorCode !== 'user_cancelled') toast('Error al iniciar sesión: ' + (e.errorCode || e.message), 'error');
-    if (btn) btn.textContent = orig;
+    toast('Error al iniciar sesión: ' + (e.errorCode || e.message), 'error');
+    updateAuthUI();
   }
 }
 
@@ -142,13 +140,37 @@ async function checkApi() {
   return online;
 }
 
+// ── SECURITY: HTML ESCAPING ──────────────────────────────────
+// Prevents XSS when inserting server/user data into innerHTML templates
+function esc(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ── FETCH HELPERS ──────────────────────────────────────────
-// API key is only applied to the local API (IS_LOCAL_API). GitHub Pages does not use it.
-const LOCAL_API_KEY = '67cf1a4e412c3f970f8cd0e416c53e4099cc17ae56129b09bd345bdd38c50c1b';
+// API key stored in sessionStorage — user enters once per session, never hardcoded.
+function getApiKey() {
+  let k = sessionStorage.getItem('pad_api_key');
+  if (!k) {
+    k = prompt('Ingrese la clave de acceso API:');
+    if (k) sessionStorage.setItem('pad_api_key', k.trim());
+  }
+  return k || '';
+}
 function apiHeaders(extra = {}) {
   const h = { ...extra };
-  if (IS_LOCAL_API) h['x-api-key'] = LOCAL_API_KEY;
+  if (IS_LOCAL_API) h['x-api-key'] = getApiKey();
   return h;
+}
+// Descarga segura: fetch con header + Blob (no expone key en URL)
+async function fetchDownload(path, filename) {
+  const r = await fetch(API + path, { headers: apiHeaders() });
+  if (!r.ok) { toast('Error al generar reporte: ' + r.statusText, 'error'); return; }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 async function apiGet(path) {
   const r = await fetch(API + path, { headers: apiHeaders() });
@@ -163,6 +185,12 @@ async function apiPost(path, body) {
 }
 async function apiPut(path, body) {
   const r = await fetch(API + path, { method: 'PUT', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Error');
+  return j;
+}
+async function apiPatch(path, body) {
+  const r = await fetch(API + path, { method: 'PATCH', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || 'Error');
   return j;
@@ -183,8 +211,8 @@ function toast(msg, tipo = 'success', titulo = null, dur = 5000) {
   el.innerHTML = `
     <span class="toast-icon">${icons[tipo]||'ℹ'}</span>
     <div class="toast-body">
-      ${titulo ? `<div class="toast-title">${titulo}</div>` : ''}
-      <div class="toast-msg">${msg}</div>
+      ${titulo ? `<div class="toast-title">${esc(titulo)}</div>` : ''}
+      <div class="toast-msg">${esc(msg)}</div>
     </div>
     <span class="toast-close">×</span>`;
   const dismiss = () => {
@@ -201,7 +229,7 @@ function toast(msg, tipo = 'success', titulo = null, dur = 5000) {
 function showConfirm(titulo, mensaje, onConfirm) {
   const overlay = document.getElementById('modal-confirm');
   document.getElementById('confirm-titulo').textContent = titulo;
-  document.getElementById('confirm-msg').innerHTML = mensaje;
+  document.getElementById('confirm-msg').textContent = mensaje;
   document.getElementById('btn-confirm-ok')._handler = onConfirm;
   openModal('modal-confirm');
 }
@@ -239,7 +267,7 @@ async function loadKpis() {
   if (k.exportado) document.getElementById('last-update').textContent = 'Al ' + new Date(k.exportado).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
 }
 
-let chartFed, chartDemo;
+let chartFed, chartDemoPad1, chartDemoPad2, chartDemoPnm;
 async function loadDashboardCharts() {
   let d;
   try {
@@ -261,7 +289,7 @@ async function loadDashboardCharts() {
   if (tbody) {
     if (feds.length) {
       tbody.innerHTML = feds.map(f => `<tr>
-        <td>${f.asociacion}</td>
+        <td>${esc(f.asociacion)}</td>
         <td style="text-align:center">${f.deportistas}</td>
         <td style="text-align:right;font-family:'JetBrains Mono',monospace">S/ ${Number(f.total_inversion).toLocaleString('es-PE',{minimumFractionDigits:2})}</td>
       </tr>`).join('');
@@ -290,29 +318,52 @@ async function loadDashboardCharts() {
   }
 
   // 4. Render Chart - Demographics
-  if (chartDemo) chartDemo.destroy();
-  const ctxDemo = document.getElementById('chart-demo');
-  if (ctxDemo) {
-    const demo = d.demografia || [];
-    const grouped = {};
-    demo.forEach(r => {
-      const type = r.cod_tipo_pad;
-      if (!grouped[type]) grouped[type] = {M:0, F:0};
-      if (r.sexo==='M') grouped[type].M += r.cantidad;
-      else grouped[type].F += r.cantidad;
-    });
-    chartDemo = new Chart(ctxDemo, {
-      type: 'bar',
+  [chartDemoPad1, chartDemoPad2, chartDemoPnm].forEach(c => c && c.destroy());
+  const demo = d.demografia || [];
+  const grouped = {};
+  demo.forEach(r => {
+    const type = r.cod_tipo_pad;
+    if (!grouped[type]) grouped[type] = {M:0, F:0};
+    if (r.sexo==='M') grouped[type].M += r.cantidad;
+    else grouped[type].F += r.cantidad;
+  });
+  const colorMap = { PAD1: ['#2563EB','#93C5FD'], PAD2: ['#16A34A','#86EFAC'], PNM: ['#9333EA','#D8B4FE'] };
+  const demoConfig = [
+    { id: 'chart-demo-pad1', key: 'PAD1', ref: 'chartDemoPad1' },
+    { id: 'chart-demo-pad2', key: 'PAD2', ref: 'chartDemoPad2' },
+    { id: 'chart-demo-pnm',  key: 'PNM',  ref: 'chartDemoPnm'  },
+  ];
+  const makePieTooltip = () => ({
+    callbacks: {
+      label: ctx => {
+        const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+        const pct = total ? ((ctx.parsed / total)*100).toFixed(1) : 0;
+        return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+      }
+    }
+  });
+  const charts = [null, null, null];
+  demoConfig.forEach((cfg, i) => {
+    const ctx = document.getElementById(cfg.id);
+    if (!ctx) return;
+    const g = grouped[cfg.key] || {M:0, F:0};
+    const [cM, cF] = colorMap[cfg.key] || ['#64748B','#CBD5E1'];
+    charts[i] = new Chart(ctx, {
+      type: 'pie',
       data: {
-        labels: Object.keys(grouped).map(k => k==='PAD1'?'PAD I':k==='PAD2'?'PAD II':k),
-        datasets: [
-          { label: 'Masculino', data: Object.values(grouped).map(g => g.M), backgroundColor: '#2563EB', borderRadius: 4 },
-          { label: 'Femenino', data: Object.values(grouped).map(g => g.F), backgroundColor: '#EA580C', borderRadius: 4 }
-        ]
+        labels: ['Masculino', 'Femenino'],
+        datasets: [{ data: [g.M, g.F], backgroundColor: [cM, cF], borderWidth: 2, borderColor: '#fff' }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } },
+          tooltip: makePieTooltip()
+        }
+      }
     });
-  }
+  });
+  [chartDemoPad1, chartDemoPad2, chartDemoPnm] = charts;
 }
 
 // ── DEPORTISTAS ──────────────────────────────────────────────
@@ -366,8 +417,8 @@ function renderDep() {
   
   tbody.innerHTML = pageData.map(r => `<tr>
     <td class="mono">${r.num_documento||'—'}</td>
-    <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
-    <td>${r.asociacion||'—'}</td>
+    <td>${esc(r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres))}</td>
+    <td>${esc(r.asociacion)||'—'}</td>
     <td style="text-align:center">${r.sexo||'—'}</td>
     <td><span class="badge badge-${(r.cod_estado_pad||'ret').toLowerCase()}">${r.cod_estado_pad==='ACT'?'Activo':'Retirado'}</span></td>
     <td>${online?`<button class="btn-edit" onclick="verDep(${r.cod_deportista||0})">&#9998; Editar</button>`:''}</td></tr>`).join('');
@@ -440,7 +491,7 @@ async function loadCambios() {
     periodosData = await apiGet('/api/movimientos/periodos');
     renderPeriodos(periodosData);
   } catch(e) {
-    document.getElementById('t-periodos').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--danger)">Error: ${e.message}</td></tr>`;
+    document.getElementById('t-periodos').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--danger)">Error: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -475,7 +526,6 @@ function renderPeriodosPage() {
       <td style="text-align:center"><span class="${cerrado?'period-badge-closed':'period-badge-open'}">${cerrado?'Cerrado':'Abierto'}</span></td>
       <td style="text-align:center">
         <div style="display:flex;gap:6px;justify-content:center">
-          <button class="btn-icon btn-dl" title="Exportar Excel" onclick="descargarCambiosPeriodo('excel','${per}')">&#8595;xls</button>
           <button class="btn-icon btn-dl" title="Exportar PDF" onclick="descargarCambiosPeriodo('pdf','${per}')">&#8595;pdf</button>
         </div>
       </td>
@@ -532,12 +582,12 @@ async function verDetallePeriodo(periodo) {
 
 async function loadDetallePeriodo(periodo) {
   const tbody = document.getElementById('t-detalle-cambios');
-  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>';
   try {
     periodoDetalleData = await apiGet('/api/movimientos/periodo/'+periodo);
     renderDetalle(periodoDetalleData);
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--danger)">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--danger)">Error: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -546,7 +596,7 @@ function renderDetalle(data) {
   const cls = {ING:'badge-ing',CAMBNIV:'badge-cambniv',RET:'badge-retiro'};
   const tbody = document.getElementById('t-detalle-cambios');
   if (!data?.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Sin cambios en este periodo.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Sin cambios en este periodo.</td></tr>';
     return;
   }
   // Check if period is closed
@@ -555,14 +605,13 @@ function renderDetalle(data) {
   tbody.innerHTML = data.map((r,i) => `<tr>
     <td style="color:var(--text3)">${i+1}</td>
     <td><span class="badge ${cls[r.cod_tip_mov]||''}" style="font-size:10px">${lbl[r.cod_tip_mov]||r.cod_tip_mov}</span></td>
-    <td style="font-size:12px">${r.deportista||r.num_documento}</td>
+    <td style="font-size:12px">${esc(r.deportista||r.num_documento)}</td>
     <td class="mono" style="font-size:11px">${r.num_documento||'—'}</td>
     <td><span class="badge badge-${(r.cod_tipo_pad||'').toLowerCase()}" style="font-size:10px">${(r.cod_tipo_pad||'').replace('PAD1','P.I').replace('PAD2','P.II')}</span></td>
     <td style="font-size:11px">${r.nivel_anterior||'—'}</td>
     <td style="font-size:11px">${r.nivel_nuevo||'—'}</td>
     <td class="mono" style="font-size:10px">${r.nro_informe||'—'}</td>
     <td class="mono" style="font-size:10px">${r.expedientes||'—'}</td>
-    <td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.motivo||''}">${r.motivo||'—'}</td>
     <td>${cerrado ? '' : `<button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="editarCambio(${r.cod_cambio})">&#9998;</button>`}</td>
   </tr>`).join('');
 }
@@ -645,9 +694,7 @@ async function cerrarPeriodoActual() {
 
 function descargarCambiosPeriodo(format, periodo) {
   if (!online) { alert('API local no disponible'); return; }
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  if (format === 'pdf') window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}${k}`, '_blank');
-  else window.open(`${API}/api/excel/consolidado-tecnico?periodo=${periodo}${k}`, '_blank');
+  fetchDownload(`/api/pdf/cambios-pad?periodo=${periodo}`, `cambios-pad-${periodo}.pdf`);
 }
 
 function abrirNuevoCambio() {
@@ -658,12 +705,54 @@ function abrirNuevoCambio() {
     const inp = document.getElementById('inp-periodo');
     if (inp) inp.value = periodoDetalle.slice(0,4)+'-'+periodoDetalle.slice(4,6);
   }
+  fillNiveles();
   // Initialize expedientes
   initExpedientes();
 }
 
+function toggleNivelesCambio() {
+  const esCambniv = document.getElementById('ec-tipo-mov').value === 'CAMBNIV';
+  document.getElementById('ec-grupo-nivel-ant').style.display = esCambniv ? '' : 'none';
+  document.getElementById('ec-grupo-nivel-nuevo').style.display = esCambniv ? '' : 'none';
+}
+
 function editarCambio(cod_cambio) {
-  alert('Edición de cambio cod_cambio='+cod_cambio+' — próxima versión.');
+  const r = periodoDetalleData?.find(x => x.cod_cambio === cod_cambio);
+  if (!r) return;
+  document.getElementById('ec-cod').value        = cod_cambio;
+  document.getElementById('ec-tipo-mov').value   = r.cod_tip_mov || 'ING';
+  document.getElementById('ec-nro-informe').value= r.nro_informe || '';
+  document.getElementById('ec-nivel-anterior').value = r.nivel_anterior || '';
+  document.getElementById('ec-nivel-nuevo').value    = r.nivel_nuevo    || '';
+  document.getElementById('ec-motivo').value     = r.motivo || '';
+  document.getElementById('modal-edit-cambio-sub').textContent =
+    `${r.deportista || r.num_documento} · Periodo ${periodoDetalle?.slice(0,4)+'-'+periodoDetalle?.slice(4,6)}`;
+  toggleNivelesCambio();
+  openModal('modal-edit-cambio');
+}
+
+async function saveEditCambio() {
+  const cod_cambio = parseInt(document.getElementById('ec-cod').value);
+  const tipo = document.getElementById('ec-tipo-mov').value;
+  const body = {
+    cod_tip_mov:    tipo,
+    nro_informe:    document.getElementById('ec-nro-informe').value.trim() || null,
+    motivo:         document.getElementById('ec-motivo').value.trim() || null,
+    nivel_anterior: tipo === 'CAMBNIV' ? document.getElementById('ec-nivel-anterior').value.trim() || null : null,
+    nivel_nuevo:    tipo === 'CAMBNIV' ? document.getElementById('ec-nivel-nuevo').value.trim() || null : null,
+  };
+  const btn = document.getElementById('btn-save-cambio');
+  btn.setAttribute('aria-busy','true');
+  try {
+    await apiPatch(`/api/movimientos/${cod_cambio}`, body);
+    closeModal('modal-edit-cambio');
+    toast('Cambio actualizado correctamente', 'success');
+    await loadDetallePeriodo(periodoDetalle);
+  } catch(e) {
+    toast('Error al guardar: ' + e.message, 'error');
+  } finally {
+    btn.removeAttribute('aria-busy');
+  }
 }
 
 // ── EXPEDIENTES MULTIPLES ─────────────────────────────────
@@ -710,17 +799,18 @@ async function previewGiro() {
   const tipo = document.getElementById('sel-tipo-giro')?.value || 'PAD1';
   const inp = document.getElementById('inp-periodo-giro');
   const periodo = inp?.value ? inp.value.replace('-','') : currentPeriodo();
+  const tipoLabel = tipo === 'PAD1' ? 'PAD I' : tipo === 'PAD2' ? 'PAD II' : 'PNM';
   document.getElementById('giro-preview-wrap').style.display = 'block';
-  document.getElementById('giro-preview-title').textContent = `Preview GIRO — ${tipo.replace('PAD1','PAD I').replace('PAD2','PAD II')} Periodo ${periodo.slice(0,4)}-${periodo.slice(4,6)}`;
+  document.getElementById('giro-preview-title').textContent = `Preview GIRO — ${tipoLabel} Periodo ${periodo.slice(0,4)}-${periodo.slice(4,6)}`;
   document.getElementById('t-giro-preview').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">Cargando...</td></tr>';
   try {
-    const d = await apiGet(`/api/reportes/activos?tipo=${tipo}`);
+    const d = await apiGet(`/api/reportes/activos?tipo=${tipo}&periodo=${periodo}`);
     const rows = d.slice(0,25);
     document.getElementById('giro-preview-count').textContent = `Mostrando ${rows.length} de ${d.length} registros`;
     document.getElementById('t-giro-preview').innerHTML = rows.map((r,i) => `<tr>
       <td>${i+1}</td>
-      <td style="font-size:11px">${r.asociacion||'—'}</td>
-      <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
+      <td style="font-size:11px">${esc(r.asociacion)||'—'}</td>
+      <td>${esc(r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres))}</td>
       <td class="mono" style="font-size:11px">${r.num_documento||'—'}</td>
       <td style="font-size:11px">${r.nivel_desc||r.cod_nivel||'—'}</td>
       <td class="mono" style="font-size:11px">${r.num_cuenta||'—'}</td>
@@ -728,7 +818,7 @@ async function previewGiro() {
       <td style="text-align:center">${!r.num_cuenta?'<span class="badge badge-retiro" style="font-size:10px">OPE</span>':''}</td>
     </tr>`).join('');
   } catch(e) {
-    document.getElementById('t-giro-preview').innerHTML = `<tr><td colspan="8" style="color:var(--danger);padding:16px">${e.message}</td></tr>`;
+    document.getElementById('t-giro-preview').innerHTML = `<tr><td colspan="8" style="color:var(--danger);padding:16px">${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -759,16 +849,15 @@ async function descargarReporte(format, report, selId) {
     }
   }
 
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  window.open(`${API}/api/${format}/${report}?tipo=${tipo}&periodo=${periodo}${k}`, '_blank');
+  const ext = format === 'excel' ? 'xlsx' : 'pdf';
+  fetchDownload(`/api/${format}/${report}?tipo=${tipo}&periodo=${periodo}`, `${report}_${tipo}_${periodo}.${ext}`);
 }
 
 function descargarCambiosPdf() {
   if (!online) { alert('API local no disponible'); return; }
   const inp = document.getElementById('inp-periodo-cambios');
   const periodo = inp?.value ? inp.value.replace('-','') : currentPeriodo();
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  window.open(`${API}/api/pdf/cambios-pad?periodo=${periodo}${k}`, '_blank');
+  fetchDownload(`/api/pdf/cambios-pad?periodo=${periodo}`, `cambios-pad-${periodo}.pdf`);
 }
 
 async function descargarGiro() {
@@ -785,8 +874,7 @@ async function descargarGiro() {
       return;
     }
   } catch(e) { console.warn('Period verification failed', e); }
-  const k = IS_LOCAL_API ? `&_key=${LOCAL_API_KEY}` : '';
-  window.open(`${API}/api/excel/giro?tipo=${tipo}&periodo=${periodo}${k}`, '_blank');
+  fetchDownload(`/api/excel/giro?tipo=${tipo}&periodo=${periodo}`, `GIRO_${tipo}_${periodo}.xlsx`);
 }
 
 // ── ORGANIZACIONES ──────────────────────────────────────────
@@ -932,8 +1020,8 @@ async function generarEconomico() {
 function renderEcoTable() {
   document.getElementById('eco-count').textContent = ecoData.length + ' registros';
   document.getElementById('t-economico').innerHTML = ecoData.map((r,i) => `<tr>
-    <td>${i+1}</td><td style="font-size:11px">${r.asociacion||'—'}</td>
-    <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
+    <td>${i+1}</td><td style="font-size:11px">${esc(r.asociacion)||'—'}</td>
+    <td>${esc(r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres))}</td>
     <td class="mono" style="font-size:12px">${r.num_documento}</td>
     <td class="mono" style="font-size:11px">${r.num_cuenta||'<span style="color:var(--coral)">OPE</span>'}</td>
     <td class="mono">S/ ${r.monto_soles?Number(r.monto_soles).toLocaleString('es-PE',{minimumFractionDigits:2}):'—'}</td></tr>`).join('');
@@ -962,8 +1050,8 @@ async function generarConsolidado() {
 function renderConsTable() {
   document.getElementById('cons-count').textContent = consData.length + ' registros';
   document.getElementById('t-consolidado').innerHTML = consData.map((r,i) => `<tr>
-    <td>${i+1}</td><td style="font-size:11px">${r.asociacion||'—'}</td>
-    <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
+    <td>${i+1}</td><td style="font-size:11px">${esc(r.asociacion)||'—'}</td>
+    <td>${esc(r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres))}</td>
     <td class="mono" style="font-size:12px">${r.num_documento}</td>
     <td style="text-align:center">${r.sexo||'—'}</td>
     <td>${r.nivel_desc||r.cod_nivel}</td>
@@ -994,8 +1082,8 @@ function renderNomina(data) {
   }
   tbody.innerHTML = filtered.map(r => `<tr>
     <td class="mono" style="color:${r.num_documento?'inherit':'var(--text3)'}">${r.num_documento||'—'}</td>
-    <td>${r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres)}</td>
-    <td>${r.asociacion||'—'}</td>
+    <td>${esc(r.deportista||(r.ap_paterno+' '+r.ap_materno+', '+r.nombres))}</td>
+    <td>${esc(r.asociacion)||'—'}</td>
     <td><span class="badge badge-${(r.cod_tipo_pad||'').toLowerCase()}">${(r.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')}</span></td>
     <td>${r.nivel_desc||r.cod_nivel||'—'}</td>
     <td><span class="badge badge-${(r.cod_estado_pad||'act').toLowerCase()}">${r.cod_estado_pad||'ACT'}</span></td>
@@ -1058,6 +1146,15 @@ async function guardarCambio() {
   const periodoRaw = document.getElementById('inp-periodo').value;
   const periodo = periodoRaw ? periodoRaw.replace('-','') : '';
   const causalEl = document.getElementById('sel-causal');
+
+  const finEv = document.getElementById('inp-ev-fin').value;
+  const nomEv = document.getElementById('inp-ev-nombre').value.trim();
+  if (tipo !== 'RET' && nomEv && !finEv) {
+    showAlert('alert-cambio','danger','Debe obligatoriamente ingresar la Fecha de fin del evento para poder calcular los meses de beneficio correspondientes.');
+    btn.disabled=false; btn.innerHTML='Registrar cambio';
+    return;
+  }
+
   const body = {
     tipo_movimiento: tipo,
     cod_deportista: depSel.cod_deportista,
@@ -1068,6 +1165,12 @@ async function guardarCambio() {
     nro_informe: document.getElementById('inp-informe').value.trim() || null,
     motivo: tipo==='RET' ? (causalEl.options[causalEl.selectedIndex]?.text||null) : null,
     detalle_evento: tipo==='RET' ? (document.getElementById('inp-det-retiro').value.trim()||null) : (document.getElementById('inp-ev-nombre').value.trim()||null),
+    fecha_inicio_evento: tipo!=='RET' ? (document.getElementById('inp-ev-ini').value || null) : null,
+    fecha_fin_evento: tipo!=='RET' ? (document.getElementById('inp-ev-fin').value || null) : null,
+    lugar_evento: tipo!=='RET' ? (document.getElementById('inp-ev-lugar').value.trim() || null) : null,
+    modalidad: tipo!=='RET' ? (document.getElementById('inp-ev-modalidad').value.trim() || null) : null,
+    categoria: tipo!=='RET' ? (document.getElementById('inp-ev-cat')?.value.trim() || null) : null,
+    resultado: tipo!=='RET' ? (document.getElementById('sel-resultado').value || null) : null,
     expedientes: getExpedientes(),
   };
   try {
@@ -1087,6 +1190,10 @@ function resetCambio() {
   document.getElementById('sel-tipo-mov').value='';
   document.getElementById('found-box').classList.remove('show');
   document.getElementById('alert-cambio').innerHTML='';
+  ['inp-ev-nombre','inp-ev-ini','inp-ev-fin','inp-ev-lugar','inp-ev-modalidad','inp-ev-cat'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('sel-resultado').value = '';
   initExpedientes();
   toggleMov();
 }
@@ -1110,6 +1217,12 @@ async function guardarDeportista() {
   };
   if (!body.num_documento||!body.ap_paterno||!body.nombres) {
     showAlert('alert-dep','warning','Complete: numero de documento, apellido paterno y nombres'); return;
+  }
+  if (!body.fecha_nac) {
+    showAlert('alert-dep','warning','La fecha de nacimiento es requerida'); return;
+  }
+  if (!body.cod_asociacion) {
+    showAlert('alert-dep','warning','Seleccione una federación o asociación'); return;
   }
   try {
     const res = await apiPost('/api/deportistas', body);
@@ -1135,7 +1248,7 @@ async function doExport() {
 // ── UI HELPERS ────────────────────────────────────────────
 function showAlert(id, type, msg) {
   const el = document.getElementById(id);
-  if (el) el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  if (el) el.innerHTML = `<div class="alert alert-${type}">${esc(msg)}</div>`;
 }
 function openModal(id) {
   const el = document.getElementById(id);
@@ -1260,8 +1373,8 @@ function showPage(id, el) {
   if (id==='deportistas') loadDep();
   if (id==='nomina') loadNomina();
   if (id==='cambios') { volverAPeriodos && (periodoDetalle=null); document.getElementById('cambios-periodos-view').style.display='block'; document.getElementById('cambios-detalle-view').style.display='none'; loadCambios(); }
-  if (id==='orgs') loadCats();
-  if (id === 'orgs') loadOrgs();
+  if (id==='orgs') loadOrgs();
+  if (id==='montos') populateDirectivaSelect().then(() => loadMontos());
   if (id==='home') loadHomeModule();
   if (id==='dashboard') loadDashboard();
 }
@@ -1280,13 +1393,13 @@ document.querySelectorAll('.filter-pills').forEach(group => {
 
 // Close modal on overlay click
 document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target===m) m.classList.remove('show'); });
+  m.addEventListener('click', e => { if (e.target===m) closeModal(m.id); });
 });
 
-// Set default periods — regular inputs get current month
+// Set default periods — regular inputs get current month (giro excluded: needs last closed)
 const now = new Date();
 const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-['inp-periodo','inp-periodo-cambios','inp-periodo-giro'].forEach(id => {
+['inp-periodo','inp-periodo-cambios'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.value = defPer;
 });
@@ -1300,7 +1413,7 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
       if (lastClosed) {
         const lc = lastClosed.periodo;
         const lcFmt = lc.slice(0,4) + '-' + lc.slice(4,6);
-        ['inp-periodo-cons-tec','inp-periodo-cons-eco'].forEach(id => {
+        ['inp-periodo-cons-tec','inp-periodo-cons-eco','inp-periodo-giro'].forEach(id => {
           const el = document.getElementById(id); if (el) el.value = lcFmt;
         });
         return;
@@ -1310,10 +1423,357 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   // Fallback: previous month
   const prev = new Date(); prev.setMonth(prev.getMonth()-1);
   const prevFmt = prev.getFullYear()+'-'+String(prev.getMonth()+1).padStart(2,'0');
-  ['inp-periodo-cons-tec','inp-periodo-cons-eco'].forEach(id => {
+  ['inp-periodo-cons-tec','inp-periodo-cons-eco','inp-periodo-giro'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = prevFmt;
   });
 })();
+
+// ── MONTOS DE REFERENCIA ─────────────────────────────────────
+let montosData = [];
+
+// Pobla el selector de directivas cargando desde API y selecciona la más reciente
+async function populateDirectivaSelect() {
+  const sel = document.getElementById('sel-directiva-montos');
+  if (!sel) return;
+  if (!online) {
+    sel.innerHTML = '<option value="">API no disponible</option>';
+    return;
+  }
+  try {
+    const data = await apiGet('/api/montos/directivas');
+    sel.innerHTML = '';
+    // Mostrar más reciente primero (invertir el orden)
+    const TIPO_LABEL_DIR = { PAD1: 'PAD I', PAD2: 'PAD II', PNM: 'PNM' };
+    [...data].reverse().forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.periodo_ref;
+      if (d.valor_uit) {
+        // Directiva vigente con año de UIT conocido
+        const uitFmt = 'S/ ' + Number(d.valor_uit).toLocaleString('es-PE', {minimumFractionDigits:2});
+        opt.textContent = `${d.normativa} — ${d.anio} (UIT ${uitFmt})`;
+      } else {
+        // Directivas históricas — limpiar prefijo verbose
+        opt.textContent = d.normativa;
+      }
+      sel.appendChild(opt);
+    });
+    if (sel.options.length > 0) sel.selectedIndex = 0;
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar directivas</option>';
+  }
+}
+
+async function loadMontos() {
+  const sel     = document.getElementById('sel-directiva-montos');
+  const selTipo = document.getElementById('sel-tipo-montos');
+  const tbody   = document.getElementById('t-montos');
+  const bar     = document.getElementById('montos-uit-bar');
+
+  if (!online) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Requiere API local activa</td></tr>';
+    if (bar) bar.style.display = 'none';
+    return;
+  }
+
+  const periodo = sel?.value || '';
+  const tipo    = selTipo?.value || '';
+  const label   = sel?.options[sel?.selectedIndex]?.textContent || '';
+
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)"><span class="spinner"></span> Cargando...</td></tr>';
+
+  try {
+    const params = new URLSearchParams();
+    if (periodo) params.set('periodo', periodo);
+    if (tipo)    params.set('tipo', tipo);
+    const data = await apiGet('/api/montos' + (params.toString() ? '?' + params.toString() : ''));
+    montosData = data;
+    renderMontos(data, periodo, label);
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Error al cargar montos</td></tr>';
+    if (bar) bar.style.display = 'none';
+  }
+}
+
+function renderMontos(data, periodo, directivaLabel) {
+  const tbody = document.getElementById('t-montos');
+  const bar   = document.getElementById('montos-uit-bar');
+  const count = document.getElementById('montos-count');
+
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Sin montos para el periodo seleccionado</td></tr>';
+    if (bar) bar.style.display = 'none';
+    if (count) count.textContent = '';
+    return;
+  }
+
+  // Barra de info
+  const first = data[0];
+  const esBloqueado = periodo && periodo < '202505';
+  if (bar) {
+    bar.style.display = 'flex';
+    document.getElementById('montos-lbl-periodo').textContent = directivaLabel || periodo || 'Actual';
+    document.getElementById('montos-lbl-uit').textContent =
+      first.valor_uit ? 'S/ ' + Number(first.valor_uit).toLocaleString('es-PE', {minimumFractionDigits:2}) : '—';
+    const dsEl = document.getElementById('montos-lbl-ds');
+    if (dsEl) dsEl.textContent = first.ref_ds_uit || '';
+    const bloqueoEl = document.getElementById('montos-lbl-bloqueo');
+    if (bloqueoEl) {
+      bloqueoEl.innerHTML = esBloqueado
+        ? '&#128274; Periodo cerrado'
+        : '<span style="color:var(--green)">&#9679;</span> Vigente';
+      bloqueoEl.style.background = esBloqueado ? 'var(--border)' : 'rgba(0,160,80,0.1)';
+      bloqueoEl.style.color = esBloqueado ? 'var(--text3)' : 'var(--green)';
+    }
+  }
+
+  // ¿Aplica % UIT? Solo cuando el periodo tiene valor_uit conocido (Dir. 003-2025)
+  const mostrarUIT = data.some(r => r.valor_uit != null);
+  const TIPO_LABEL = { PAD1: 'PAD I', PAD2: 'PAD II', PNM: 'PNM' };
+
+  // Cabecera dinámica
+  const thead = tbody.closest('table')?.querySelector('thead tr');
+  if (thead) {
+    thead.innerHTML = `
+      <th>Tipo PAD</th>
+      <th>Nivel</th>
+      ${mostrarUIT ? '<th style="text-align:right">% UIT</th>' : ''}
+      <th style="text-align:right">Monto mensual (S/)</th>
+      <th>Normativa</th>`;
+  }
+
+  tbody.innerHTML = data.map(r => {
+    const monto = 'S/ ' + Number(r.monto_soles).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+    return `<tr>
+      <td><strong>${TIPO_LABEL[r.cod_tipo_pad] || r.cod_tipo_pad}</strong></td>
+      <td>${r.nombre_nivel || r.cod_nivel} <span style="font-size:11px;color:var(--text3)">${r.cod_nivel}</span></td>
+      ${mostrarUIT ? `<td style="text-align:right;font-family:var(--mono)">${r.pct_uit != null ? (r.pct_uit * 100).toFixed(0) + ' %' : '—'}</td>` : ''}
+      <td style="text-align:right;font-family:var(--mono);font-weight:600">${monto}</td>
+      <td style="font-size:11px;color:var(--text3)">${r.normativa || '—'}</td>
+    </tr>`;
+  }).join('');
+  if (count) count.textContent = data.length + ' niveles';
+}
+
+// ── Modal Generar Montos ──────────────────────────────────────
+function abrirModalGenerarMontos() {
+  if (!online) { toast('Requiere API local activa', 'error'); return; }
+  document.getElementById('inp-generar-anio').value = '';
+  document.getElementById('inp-generar-uit').value  = '';
+  document.getElementById('inp-generar-ds').value   = '';
+  document.getElementById('t-montos-preview').innerHTML = '';
+  document.getElementById('montos-preview-total').textContent = '';
+  document.getElementById('montos-preview-wrap').style.display = 'none';
+  document.getElementById('btn-confirmar-generar').disabled = true;
+  openModal('modal-generar-montos');
+}
+
+async function calcPrevMontos() {
+  const anio = parseInt(document.getElementById('inp-generar-anio').value, 10);
+  const uit  = parseFloat(document.getElementById('inp-generar-uit').value);
+  if (!anio || anio < 2025 || isNaN(uit) || uit <= 0) {
+    toast('Ingresa un año válido (≥ 2025) y un valor UIT mayor a cero', 'error');
+    return;
+  }
+  try {
+    const data = await apiGet(`/api/montos/preview?anio=${anio}&valor_uit=${uit}`);
+    const TIPO_LABEL = { PAD1: 'PAD I', PAD2: 'PAD II', PNM: 'PNM' };
+    const tbody = document.getElementById('t-montos-preview');
+    tbody.innerHTML = data.niveles.map(n =>
+      `<tr>
+        <td>${n.nombre_nivel} <span style="font-size:10px;color:var(--text3)">${n.cod_nivel}</span></td>
+        <td>${TIPO_LABEL[n.cod_tipo_pad] || n.cod_tipo_pad}</td>
+        <td style="text-align:right;font-family:var(--mono)">${(n.pct_uit * 100).toFixed(0)} %</td>
+        <td style="text-align:right;font-family:var(--mono);font-weight:600">S/ ${Number(n.monto_soles).toLocaleString('es-PE',{minimumFractionDigits:2})}</td>
+      </tr>`
+    ).join('');
+    const totalMensual = data.niveles.reduce((s, n) => s + n.monto_soles, 0);
+    document.getElementById('montos-preview-total').textContent =
+      `Suma de montos: S/ ${totalMensual.toLocaleString('es-PE',{minimumFractionDigits:2})}`;
+    document.getElementById('montos-preview-wrap').style.display = 'block';
+    document.getElementById('btn-confirmar-generar').disabled = false;
+  } catch (err) {
+    toast('Error al calcular preview: ' + err.message, 'error');
+  }
+}
+
+async function confirmarGenerarMontos() {
+  const anio  = parseInt(document.getElementById('inp-generar-anio').value, 10);
+  const uit   = parseFloat(document.getElementById('inp-generar-uit').value);
+  const refDs = document.getElementById('inp-generar-ds').value.trim();
+  if (!anio || isNaN(uit)) { toast('Completa el año y el valor UIT', 'error'); return; }
+
+  const btn = document.getElementById('btn-confirmar-generar');
+  btn.setAttribute('aria-busy', 'true');
+  btn.disabled = true;
+
+  try {
+    const r = await apiPost('/api/montos/generar', { anio, valor_uit: uit, ref_ds: refDs || null });
+    closeModal('modal-generar-montos');
+    toast(`✓ Generados ${r.registros_insertados} montos para ${r.periodos.length} meses del año ${r.anio}`, 'success');
+    // Recargar vista mostrando el primer mes generado
+    const primerMes = r.periodos[0];
+    const inp = document.getElementById('inp-periodo-montos');
+    if (inp) inp.value = primerMes.slice(0, 4) + '-' + primerMes.slice(4, 6);
+    await loadMontos();
+  } catch (err) {
+    toast('Error al generar montos: ' + err.message, 'error');
+    btn.removeAttribute('aria-busy');
+    btn.disabled = false;
+  }
+}
+
+// ── FASE 5: REGULARIZACIÓN TEMPORAL ─────────────────────────
+async function openPendientes() {
+  if (!online) { alert('API local no disponible'); return; }
+  const tbody = document.getElementById('t-pendientes');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)"><span class="spinner"></span> Cargando pendientes...</td></tr>';
+  openModal('modal-pendientes');
+  try {
+    const data = await apiGet('/api/deportistas/pendientes-regularizacion');
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--green)">&#10003; No hay deportistas pendientes de regularizar. ¡Todo al día!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(r => {
+      const faltan = [];
+      if (!r.nro_informe) faltan.push('<span class="badge" style="background:#fef2f2;color:#dc2626;border-color:#fca5a5">Informe</span>');
+      if (!r.detalle_evento || !r.cod_resultado) faltan.push('<span class="badge" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">Evento</span>');
+      if (!r.cant_expedientes) faltan.push('<span class="badge" style="background:#fefce8;color:#a16207;border-color:#fde047">Exp.</span>');
+      if (!r.num_cuenta) faltan.push('<span class="badge" style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc">Cuenta</span>');
+      const depName = r.ap_paterno + ' ' + r.ap_materno + ', ' + r.nombres;
+      return `<tr>
+        <td class="mono" style="font-size:12px">${r.num_documento}</td>
+        <td>${depName}</td>
+        <td style="font-size:11px">${(r.cod_tipo_pad||'').replace('PAD1','PAD I').replace('PAD2','PAD II')} / ${r.cod_nivel}</td>
+        <td>${faltan.join(' ')}</td>
+        <td><button class="btn-edit" onclick="regularizar(\'${encodeURIComponent(JSON.stringify(r))}\')">&#9998; Regularizar</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger);padding:16px">${esc(e.message)}</td></tr>`;
+  }
+}
+
+function regularizar(encodedR) {
+  const r = JSON.parse(decodeURIComponent(encodedR));
+  const nombre = r.ap_paterno + ' ' + r.ap_materno + ', ' + r.nombres;
+  document.getElementById('reg-titulo').textContent = 'Regularizar Deportista';
+  document.getElementById('reg-subtitulo').textContent = nombre;
+  document.getElementById('reg-cod-cambio').value = r.cod_cambio;
+  document.getElementById('reg-cod-deportista').value = r.cod_deportista;
+  document.getElementById('alert-reg').innerHTML = '';
+
+  // Pre-cargar informe si ya existe, o limpiar si falta
+  const infoEl = document.getElementById('reg-informe');
+  if (infoEl) {
+    infoEl.value = r.nro_informe || '';
+    // Marcar visualmente si ya estaba registrado
+    infoEl.style.background = r.nro_informe ? 'var(--green-light, #f0fdf4)' : '';
+    infoEl.title = r.nro_informe ? '✓ Ya registrado anteriormente' : '';
+  }
+
+  // Limpiar campos de evento (siempre vacíos — si ya hay detalle_evento el deportista no aparecería aquí)
+  ['reg-ev-nombre','reg-ev-ini','reg-ev-fin','reg-ev-mod','reg-ev-cat'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('reg-ev-res').value = '';
+
+  // Mostrar estado de num_cuenta directamente en el campo
+  const cuentaEl = document.getElementById('reg-num-cuenta');
+  const cuentaHint = document.getElementById('reg-cuenta-hint');
+  if (cuentaEl) {
+    if (r.num_cuenta) {
+      cuentaEl.value = r.num_cuenta;
+      cuentaEl.readOnly = true;
+      cuentaEl.style.background = '#f0fdf4';
+      cuentaEl.style.color = 'var(--green, #16a34a)';
+      cuentaEl.style.cursor = 'default';
+      if (cuentaHint) cuentaHint.innerHTML = '<span style="color:var(--green,#16a34a)">&#10003; Ya registrada</span>';
+    } else {
+      cuentaEl.value = '';
+      cuentaEl.readOnly = false;
+      cuentaEl.style.background = '';
+      cuentaEl.style.color = '';
+      cuentaEl.style.cursor = '';
+      if (cuentaHint) cuentaHint.innerHTML = '<span style="color:var(--danger)">Sin cuenta — ingresar para actualizar</span>';
+    }
+  }
+
+  // Pre-cargar expedientes ya registrados, o abrir fila vacía si no hay
+  const c = document.getElementById('reg-exp-container');
+  c.innerHTML = '';
+  const exps = r.expedientes_existentes || [];
+  if (exps.length > 0) {
+    exps.forEach(exp => agregarExpReg(exp.nro_expediente, exp.tipo_documento, true));
+  } else {
+    agregarExpReg();
+  }
+  openModal('modal-form-reg');
+}
+
+function agregarExpReg(nroExistente, tipoExistente, esPrecargado) {
+  const c = document.getElementById('reg-exp-container');
+  const div = document.createElement('div');
+  div.className = 'exp-row';
+  div.style.display = 'flex'; div.style.gap = '8px';
+  const tipos = ['EXPEDIENTE','INFORME','OFICIO','RESOLUCION','OTRO'];
+  const opcionesTipo = tipos.map(t => `<option value="${t}" ${tipoExistente===t?'selected':''}>${t.charAt(0)+t.slice(1).toLowerCase()}</option>`).join('');
+  const bgPre = esPrecargado ? 'background:var(--green-light,#f0fdf4);' : '';
+  const titlePre = esPrecargado ? 'title="✓ Ya registrado"' : '';
+  div.innerHTML = `
+    <input placeholder="Nro. exp." class="reg-exp-nro" value="${nroExistente||''}" ${titlePre} style="flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;${bgPre}">
+    <select class="reg-exp-tipo" style="width:120px;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;${bgPre}">
+      ${opcionesTipo}
+    </select>
+    <button type="button" class="btn-icon" onclick="this.parentElement.remove()" style="color:var(--danger)">&times;</button>`;
+  c.appendChild(div);
+}
+
+async function guardarRegularizacion() {
+  const btn = document.getElementById('btn-save-reg');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando...';
+  
+  const expedientes = Array.from(document.querySelectorAll('#reg-exp-container .exp-row'))
+    .map(row => ({
+      nro_expediente: row.querySelector('.reg-exp-nro').value.trim(),
+      tipo_documento: row.querySelector('.reg-exp-tipo').value
+    }))
+    .filter(e => e.nro_expediente);
+
+  const finEv = document.getElementById('reg-ev-fin').value;
+  if (!finEv && document.getElementById('reg-ev-nombre').value.trim()) {
+    document.getElementById('alert-reg').innerHTML = `<div class="alert alert-danger">Debe ingresar la Fecha de fin del evento para calcular el beneficio.</div>`;
+    btn.disabled = false; btn.innerHTML = '&#10003; Guardar Datos';
+    return;
+  }
+
+  const body = {
+    cod_cambio: document.getElementById('reg-cod-cambio').value,
+    cod_deportista: document.getElementById('reg-cod-deportista').value,
+    nro_informe: document.getElementById('reg-informe').value.trim() || null,
+    detalle_evento: document.getElementById('reg-ev-nombre').value.trim() || null,
+    fecha_inicio_evento: document.getElementById('reg-ev-ini').value || null,
+    fecha_fin_evento: finEv || null,
+    modalidad: document.getElementById('reg-ev-mod').value.trim() || null,
+    categoria: document.getElementById('reg-ev-cat').value.trim() || null,
+    resultado: document.getElementById('reg-ev-res').value || null,
+    num_cuenta: (() => { const el = document.getElementById('reg-num-cuenta'); return (el && !el.readOnly) ? el.value.trim() || null : null; })(),
+    expedientes
+  };
+
+  try {
+    await apiPost('/api/deportistas/regularizar', body);
+    closeModal('modal-form-reg');
+    toast('Registro regularizado exitosamente', 'success');
+    openPendientes(); // recargar
+    await loadDashboard(); // actualizar kpis
+  } catch(e) {
+    document.getElementById('alert-reg').innerHTML = `<div class="alert alert-danger">${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.innerHTML = '&#10003; Guardar Datos';
+  }
+}
+
 
 // ── INIT ──────────────────────────────────────────────────
 (async () => {
@@ -1327,10 +1787,14 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   if (msalApp) {
     try {
       const rr = await msalApp.handleRedirectPromise();
-      if (rr) console.log('MSAL redirect OK:', rr.account?.username);
+      if (rr?.account) {
+        // Retorno exitoso de loginRedirect — ya tenemos la cuenta
+        showApp(rr.account);
+        updateAuthUI();
+        return; // showApp ya se llamó, no hace falta llamarlo de nuevo abajo
+      }
     } catch(e) {
-      // Error de redirect no es fatal — el usuario puede iniciar sesión con popup
-      console.warn('MSAL redirect (no fatal):', e.errorCode, e.message);
+      console.warn('MSAL redirect error:', e.errorCode, e.message);
     }
   }
 
@@ -1340,8 +1804,8 @@ const defPer = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
     ? { username: 'localhost' }
     : (accounts[0] || null);
   showApp(account);
-
   await checkApi();
+  await loadCats();
   setInterval(checkApi, 30000);
 
   // Si es la API local, entrar directo a Gestión PAD sin pasar por el home screen

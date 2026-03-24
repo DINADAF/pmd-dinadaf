@@ -24,6 +24,8 @@ router.get('/giro', async (req, res) => {
   try {
     const tipo = req.query.tipo || 'PAD1';
     const periodo = req.query.periodo || new Date().toISOString().slice(0,7).replace('-','');
+    const vErr = validarParamsReporte(tipo, periodo);
+    if (vErr) return res.status(400).json({ error: vErr });
 
     const result = await query(`
       SELECT
@@ -79,7 +81,7 @@ router.get('/giro', async (req, res) => {
     const hRow = ws.addRow(headers);
     hRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFF' }, size: 9 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1D6B4F' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '404040' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
         bottom: { style: 'thin', color: { argb: '000000' } }
@@ -179,7 +181,7 @@ router.get('/giro', async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -297,6 +299,8 @@ router.get('/consolidado-tecnico', async (req, res) => {
   try {
     const tipo = req.query.tipo || 'PAD1';
     const periodo = req.query.periodo || new Date().toISOString().slice(0,7).replace('-','');
+    const vErr = validarParamsReporte(tipo, periodo);
+    if (vErr) return res.status(400).json({ error: vErr });
     const subtipoLabel = tipo === 'PAD1' ? 'I' : tipo === 'PAD2' ? 'II' : '(PNM)';
 
     const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
@@ -452,7 +456,7 @@ router.get('/consolidado-tecnico', async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -462,6 +466,8 @@ router.get('/consolidado-economico', async (req, res) => {
   try {
     const tipo = req.query.tipo || 'PAD1';
     const periodo = req.query.periodo || new Date().toISOString().slice(0,7).replace('-','');
+    const vErr = validarParamsReporte(tipo, periodo);
+    if (vErr) return res.status(400).json({ error: vErr });
     const subtipoLabel = tipo === 'PAD1' ? 'I' : tipo === 'PAD2' ? 'II' : '(PNM)';
 
     const pCheck = await query(`SELECT cerrado FROM pad.periodos_cambios WHERE periodo = @p`, [{name:'p', type:sql.VarChar(6), value:periodo}]);
@@ -573,7 +579,7 @@ router.get('/consolidado-economico', async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

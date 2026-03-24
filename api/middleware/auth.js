@@ -5,7 +5,7 @@ const PUBLIC_PATHS = ['/health'];
 module.exports = function requireApiKey(req, res, next) {
   if (PUBLIC_PATHS.some(p => req.path === p)) return next();
 
-  const key = req.headers['x-api-key'] || req.query._key;
+  const key = req.headers['x-api-key'];
   const validKeys = (process.env.API_KEYS || '').split(',').map(k => k.trim()).filter(Boolean);
 
   if (!key || !validKeys.includes(key)) {

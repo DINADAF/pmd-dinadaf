@@ -22,6 +22,12 @@ router.post('/', async (req, res) => {
     ruta_documento,
     expedientes,         // array of { nro_expediente, tipo_documento }
     cod_resultado,
+    fecha_inicio_evento,
+    fecha_fin_evento,
+    lugar_evento,
+    modalidad,
+    categoria,
+    resultado
   } = req.body;
 
   if (!tipo_movimiento || !['ING', 'CAMBNIV', 'RET'].includes(tipo_movimiento))
@@ -86,7 +92,7 @@ router.post('/', async (req, res) => {
       const existing = await new sql.Request(transaction)
         .input('cod_deportista', sql.Int, cod_deportista)
         .input('cod_tipo_pad', sql.VarChar(5), cod_tipo_pad)
-        .query(`SELECT cod_pad FROM pad.PAD
+        .query(`SELECT cod_pad, cod_nivel FROM pad.PAD
                 WHERE cod_deportista = @cod_deportista
                   AND cod_tipo_pad = @cod_tipo_pad
                   AND cod_estado_pad IN ('ACT','LES','LSS')`);
@@ -94,6 +100,7 @@ router.post('/', async (req, res) => {
       if (existing.recordset.length === 0)
         throw new Error('No se encontró registro PAD activo para retirar');
       cod_pad = existing.recordset[0].cod_pad;
+      cod_nivel = existing.recordset[0].cod_nivel; // nivel al momento del retiro
 
       await new sql.Request(transaction)
         .input('cod_pad', sql.Int, cod_pad)
@@ -113,6 +120,39 @@ router.post('/', async (req, res) => {
       }
     }
 
+    let resolved_cod_resultado = cod_resultado || null;
+    
+    // Si envian datos de evento y no tenemos cod_resultado preexistente, crearlo al vuelo
+    if (!resolved_cod_resultado && detalle_evento && tipo_movimiento !== 'RET') {
+      // 1. Crear el Evento
+      const evQuery = await new sql.Request(transaction)
+        .input('nombre_evento', sql.VarChar(200), detalle_evento)
+        .input('fecha_inicio', sql.Date, fecha_inicio_evento || null)
+        .input('fecha_fin', sql.Date, fecha_fin_evento || null)
+        .input('ciudad', sql.VarChar(80), lugar_evento || null)
+        .query(`INSERT INTO pad.Eventos_Resultado (nombre_evento, fecha_inicio, fecha_fin, ciudad)
+                OUTPUT INSERTED.cod_evento
+                VALUES (@nombre_evento, @fecha_inicio, @fecha_fin, @ciudad)`);
+
+      const cod_evento_nuevo = evQuery.recordset[0].cod_evento;
+
+      const RESULTADOS_VALIDOS = ['ORO', 'PLATA', 'BRONCE', 'PARTICIPACION', 'OTRO'];
+      const resultadoVal = resultado && RESULTADOS_VALIDOS.includes(resultado) ? resultado : 'PARTICIPACION';
+
+      // 2. Asociar el Resultado al Deportista (Vencimiento = fin de mes, 11 meses despues)
+      const resQuery = await new sql.Request(transaction)
+        .input('cod_evento', sql.Int, cod_evento_nuevo)
+        .input('cod_deportista', sql.Int, cod_deportista)
+        .input('modalidad', sql.VarChar(100), modalidad || null)
+        .input('categoria', sql.VarChar(50), categoria || null)
+        .input('resultado', sql.VarChar(30), resultadoVal)
+        .query(`INSERT INTO pad.resultados_deportista (cod_evento, cod_deportista, modalidad, categoria, resultado, fecha_vencimiento)
+                OUTPUT INSERTED.cod_resultado
+                VALUES (@cod_evento, @cod_deportista, @modalidad, @categoria, @resultado, EOMONTH((SELECT fecha_fin FROM pad.Eventos_Resultado WHERE cod_evento = @cod_evento), 11))`);
+      
+      resolved_cod_resultado = resQuery.recordset[0].cod_resultado;
+    }
+
     // Insert into cambios_PAD (uses cod_tip_mov, not cod_tipo_movimiento)
     const r2 = await new sql.Request(transaction)
       .input('cod_pad', sql.Int, cod_pad)
@@ -121,11 +161,15 @@ router.post('/', async (req, res) => {
       .input('periodo_vigencia', sql.VarChar(6), periodo_vigencia || null)
       .input('motivo', sql.VarChar(500), motivo || null)
       .input('detalle_evento', sql.VarChar(2000), detalle_evento || null)
-      .input('nivel_anterior', sql.VarChar(10), cod_nivel_anterior || null)
-      .input('nivel_nuevo', sql.VarChar(10), cod_nivel || null)
+      .input('nivel_anterior', sql.VarChar(10), tipo_movimiento === 'CAMBNIV' ? (cod_nivel_anterior || null)
+                                              : tipo_movimiento === 'RET'     ? (cod_nivel || null)
+                                              : null)
+      .input('nivel_nuevo',    sql.VarChar(10), tipo_movimiento === 'ING'     ? (cod_nivel || null)
+                                              : tipo_movimiento === 'CAMBNIV' ? (cod_nivel || null)
+                                              : null)
       .input('fecha_limite', sql.Date, fecha_limite || null)
       .input('ruta_documento', sql.VarChar(500), ruta_documento || null)
-      .input('cod_resultado', sql.Int, cod_resultado || null)
+      .input('cod_resultado', sql.Int, resolved_cod_resultado)
       .query(`INSERT INTO pad.cambios_PAD
                 (cod_pad, cod_tip_mov, nro_informe, periodo_vigencia,
                  motivo, detalle_evento, nivel_anterior, nivel_nuevo,
@@ -155,7 +199,7 @@ router.post('/', async (req, res) => {
 
   } catch (err) {
     await transaction.rollback().catch(() => {});
-    console.error(err);
+    logger.error('movimientos.post', err);
     res.status(500).json({ error: 'Error al registrar movimiento' });
   }
 });
@@ -168,7 +212,9 @@ router.get('/recientes', async (req, res) => {
       `SELECT TOP 50
          c.cod_cambio, c.cod_tip_mov AS cod_tipo_movimiento,
          c.nro_informe, c.periodo_vigencia, c.motivo,
-         c.nivel_anterior, c.nivel_nuevo, c.fecha_informe AS fecha_cambio,
+         ISNULL(nant.nombre_nivel, c.nivel_anterior) AS nivel_anterior,
+         ISNULL(nnuv.nombre_nivel, c.nivel_nuevo)    AS nivel_nuevo,
+         c.fecha_informe AS fecha_cambio,
          d.ap_paterno + ' ' + d.ap_materno + ', ' + d.nombres AS deportista,
          d.num_documento,
          p.cod_tipo_pad, p.cod_nivel,
@@ -177,8 +223,11 @@ router.get('/recientes', async (req, res) => {
        JOIN pad.PAD p ON c.cod_pad = p.cod_pad
        JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
        LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
+       LEFT JOIN cat.Nivel nant ON nant.cod_nivel = c.nivel_anterior
+       LEFT JOIN cat.Nivel nnuv ON nnuv.cod_nivel = c.nivel_nuevo
        WHERE (@periodo IS NULL OR c.periodo_vigencia = @periodo)
        ORDER BY c.cod_cambio DESC`,
+      /* NOTA: El ISNULL se mantiene como fallback para cualquier residual histórico no mapeado */
       [{ name: 'periodo', type: sql.VarChar(6), value: periodo || null }]
     );
     res.json(result.recordset);
@@ -216,6 +265,7 @@ router.get('/periodos', async (req, res) => {
 // GET /api/movimientos/periodo/:periodo — all changes for a specific period
 router.get('/periodo/:periodo', async (req, res) => {
   const { periodo } = req.params;
+  if (!validarPeriodo(periodo)) return res.status(400).json({ error: 'periodo debe tener formato YYYYMM válido' });
   try {
     const result = await query(
       `SELECT
@@ -224,8 +274,8 @@ router.get('/periodo/:periodo', async (req, res) => {
          c.nro_informe,
          c.periodo_vigencia,
          c.motivo,
-         c.nivel_anterior,
-         c.nivel_nuevo,
+         ISNULL(nant.nombre_nivel, c.nivel_anterior) AS nivel_anterior,
+         ISNULL(nnuv.nombre_nivel, c.nivel_nuevo)    AS nivel_nuevo,
          c.fecha_informe AS fecha_cambio,
          d.ap_paterno + ' ' + d.ap_materno + ', ' + d.nombres AS deportista,
          d.num_documento,
@@ -238,6 +288,8 @@ router.get('/periodo/:periodo', async (req, res) => {
        JOIN pad.PAD p ON c.cod_pad = p.cod_pad
        JOIN pad.Deportistas d ON p.cod_deportista = d.cod_deportista
        LEFT JOIN pad.Asociacion_Deportiva a ON d.cod_asociacion = a.cod_asociacion
+       LEFT JOIN cat.Nivel nant ON nant.cod_nivel = c.nivel_anterior
+       LEFT JOIN cat.Nivel nnuv ON nnuv.cod_nivel = c.nivel_nuevo
        WHERE c.periodo_vigencia = @periodo
        ORDER BY c.cod_cambio ASC`,
       [{ name: 'periodo', type: sql.VarChar(6), value: periodo }]
@@ -252,6 +304,7 @@ router.get('/periodo/:periodo', async (req, res) => {
 // POST /api/movimientos/periodos/:periodo/cerrar — close a period
 router.post('/periodos/:periodo/cerrar', async (req, res) => {
   const { periodo } = req.params;
+  if (!validarPeriodo(periodo)) return res.status(400).json({ error: 'periodo debe tener formato YYYYMM válido' });
   const { usuario, notas } = req.body;
   try {
     const pool = await getPool();
@@ -276,6 +329,7 @@ router.post('/periodos/:periodo/cerrar', async (req, res) => {
 // POST /api/movimientos/periodos/:periodo/reabrir — reopen a closed period
 router.post('/periodos/:periodo/reabrir', async (req, res) => {
   const { periodo } = req.params;
+  if (!validarPeriodo(periodo)) return res.status(400).json({ error: 'periodo debe tener formato YYYYMM válido' });
   try {
     const pool = await getPool();
     await pool.request()
@@ -287,6 +341,54 @@ router.post('/periodos/:periodo/reabrir', async (req, res) => {
   } catch (err) {
     logger.error('movimientos', err);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PATCH /api/movimientos/:cod_cambio — edit documentary fields of an existing movement
+// Only allowed when the period is NOT closed. Editable: cod_tip_mov, nro_informe, motivo,
+// nivel_anterior, nivel_nuevo (the latter two only meaningful for CAMBNIV).
+router.patch('/:cod_cambio(\\d+)', async (req, res) => {
+  const cod_cambio = parseInt(req.params.cod_cambio);
+  const { cod_tip_mov, nro_informe, motivo, nivel_anterior, nivel_nuevo } = req.body;
+
+  const VALID_MOVS = ['ING', 'CAMBNIV', 'RET'];
+  if (cod_tip_mov && !VALID_MOVS.includes(cod_tip_mov)) {
+    return res.status(400).json({ error: 'cod_tip_mov inválido. Valores: ING, CAMBNIV, RET' });
+  }
+
+  try {
+    const pool = await getPool();
+
+    // Fetch current record to get period and validate
+    const cur = await pool.request()
+      .input('cod', sql.Int, cod_cambio)
+      .query(`SELECT c.cod_cambio, c.periodo_vigencia, ISNULL(p.cerrado,0) AS cerrado
+              FROM pad.cambios_PAD c
+              LEFT JOIN pad.periodos_cambios p ON p.periodo = c.periodo_vigencia
+              WHERE c.cod_cambio = @cod`);
+
+    if (!cur.recordset.length) return res.status(404).json({ error: 'Cambio no encontrado' });
+    if (cur.recordset[0].cerrado) return res.status(403).json({ error: 'El periodo está cerrado. No se puede editar.' });
+
+    await pool.request()
+      .input('cod',            sql.Int,          cod_cambio)
+      .input('cod_tip_mov',    sql.VarChar(7),   cod_tip_mov   || null)
+      .input('nro_informe',    sql.VarChar(80),  nro_informe   || null)
+      .input('motivo',         sql.VarChar(500), motivo        || null)
+      .input('nivel_anterior', sql.VarChar(10),  nivel_anterior || null)
+      .input('nivel_nuevo',    sql.VarChar(10),  nivel_nuevo    || null)
+      .query(`UPDATE pad.cambios_PAD SET
+                cod_tip_mov    = ISNULL(@cod_tip_mov,    cod_tip_mov),
+                nro_informe    = ISNULL(@nro_informe,    nro_informe),
+                motivo         = ISNULL(@motivo,         motivo),
+                nivel_anterior = @nivel_anterior,
+                nivel_nuevo    = @nivel_nuevo
+              WHERE cod_cambio = @cod`);
+
+    res.json({ ok: true, cod_cambio });
+  } catch (err) {
+    logger.error('movimientos patch', err);
+    res.status(500).json({ error: 'Error al actualizar el cambio' });
   }
 });
 

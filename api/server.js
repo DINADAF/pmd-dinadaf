@@ -13,13 +13,27 @@ const movimientos = require('./routes/movimientos');
 const reportes = require('./routes/reportes');
 const reportesPdf = require('./routes/reportes-pdf');
 const reportesExcel = require('./routes/reportes-excel');
+const montos = require('./routes/montos');
 
 const app = express();
-const PORT = process.env.API_PORT || 3001;
+const PORT = process.env.API_PORT || 8080;
 
 // ── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: false,      // Frontend SPA manages its own CSP
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://alcdn.msauth.net"],
+      styleSrc:   ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+      fontSrc:    ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
+      connectSrc: ["'self'", "https://login.microsoftonline.com", "https://graph.microsoft.com", "https://alcdn.msauth.net", "https://cdn.jsdelivr.net"],
+      imgSrc:     ["'self'", "data:", "blob:"],
+      scriptSrcAttr: ["'unsafe-inline'"],  // Needed for onclick= in index.html; XSS mitigated by esc() + API key
+      objectSrc:  ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: null,  // Server is HTTP-only on local network
+    },
+  },
   crossOriginEmbedderPolicy: false,  // Needed for PDFKit streaming
 }));
 
@@ -84,6 +98,7 @@ app.use('/api/reportes', reportes);
 app.use('/api/reportes/exportar', exportLimiter);  // extra limit for export
 app.use('/api/pdf', reportesPdf);
 app.use('/api/excel', reportesExcel);
+app.use('/api/montos', montos);
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
