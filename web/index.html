@@ -11,6 +11,23 @@
 </head>
 <body>
 
+<!-- MODAL CLAVE API -->
+<div id="modal-apikey" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:none;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:10px;padding:32px 28px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18);font-family:inherit">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:6px">Sistema de Gestión PAD</div>
+    <div style="font-size:16px;font-weight:600;color:var(--text1);margin-bottom:4px">Acceso al módulo</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px">Ingrese clave para usar el módulo</div>
+    <input id="apikey-input" type="password" placeholder="Clave de acceso"
+      style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;outline:none;margin-bottom:14px"
+      onkeydown="if(event.key==='Enter')confirmApiKey()">
+    <button onclick="confirmApiKey()"
+      style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
+      Ingresar
+    </button>
+    <div id="apikey-error" style="color:#c0392b;font-size:12px;margin-top:8px;display:none">Clave incorrecta. Intente nuevamente.</div>
+  </div>
+</div>
+
 <!-- HOME SCREEN — module selector (shown after login, before entering a module) -->
 <!-- SPLASH SCREEN (solo visible en API local, desaparece en 1.5s) -->
 <div class="splash-overlay" id="splash-overlay" style="display:none">

@@ -152,23 +152,36 @@ function esc(str) {
 }
 
 // ── FETCH HELPERS ──────────────────────────────────────────
-// API key stored in sessionStorage — user enters once per session, never hardcoded.
+// API key stored in sessionStorage — user enters once per session via custom modal.
+let _apikeyResolve = null;
 function getApiKey() {
-  let k = sessionStorage.getItem('pad_api_key');
-  if (!k) {
-    k = prompt('Ingrese la clave de acceso API:');
-    if (k) sessionStorage.setItem('pad_api_key', k.trim());
-  }
-  return k || '';
+  const k = sessionStorage.getItem('pad_api_key');
+  if (k) return Promise.resolve(k);
+  return new Promise(resolve => {
+    _apikeyResolve = resolve;
+    const m = document.getElementById('modal-apikey');
+    if (m) { m.style.display = 'flex'; document.getElementById('apikey-input').focus(); }
+  });
 }
-function apiHeaders(extra = {}) {
+function confirmApiKey() {
+  const input = document.getElementById('apikey-input');
+  const val = (input?.value || '').trim();
+  if (!val) return;
+  sessionStorage.setItem('pad_api_key', val);
+  const m = document.getElementById('modal-apikey');
+  if (m) m.style.display = 'none';
+  if (input) input.value = '';
+  document.getElementById('apikey-error').style.display = 'none';
+  if (_apikeyResolve) { _apikeyResolve(val); _apikeyResolve = null; }
+}
+async function apiHeaders(extra = {}) {
   const h = { ...extra };
-  if (IS_LOCAL_API) h['x-api-key'] = getApiKey();
+  if (IS_LOCAL_API) h['x-api-key'] = await getApiKey();
   return h;
 }
 // Descarga segura: fetch con header + Blob (no expone key en URL)
 async function fetchDownload(path, filename) {
-  const r = await fetch(API + path, { headers: apiHeaders() });
+  const r = await fetch(API + path, { headers: await apiHeaders() });
   if (!r.ok) { toast('Error al generar reporte: ' + r.statusText, 'error'); return; }
   const blob = await r.blob();
   const url = URL.createObjectURL(blob);
@@ -177,24 +190,24 @@ async function fetchDownload(path, filename) {
   URL.revokeObjectURL(url);
 }
 async function apiGet(path) {
-  const r = await fetch(API + path, { headers: apiHeaders() });
+  const r = await fetch(API + path, { headers: await apiHeaders() });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function apiPost(path, body) {
-  const r = await fetch(API + path, { method: 'POST', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
+  const r = await fetch(API + path, { method: 'POST', headers: await apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || 'Error');
   return j;
 }
 async function apiPut(path, body) {
-  const r = await fetch(API + path, { method: 'PUT', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
+  const r = await fetch(API + path, { method: 'PUT', headers: await apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || 'Error');
   return j;
 }
 async function apiPatch(path, body) {
-  const r = await fetch(API + path, { method: 'PATCH', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
+  const r = await fetch(API + path, { method: 'PATCH', headers: await apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || 'Error');
   return j;
